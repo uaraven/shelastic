@@ -1,57 +1,173 @@
 package es
 
 import (
-	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
-
-	"github.com/olivere/elastic"
 )
 
-type EsConnection interface {
-	Health() *elastic.ClusterHealthResponse
-	ListIndices() []string
+type PingResponse struct {
+	Status      int
+	ClusterName string
+	Version     string
+}
+
+type ClusterHealth struct {
+	ClusterName string
+	Status      string
+}
+
+type ShortNodeInfo struct {
+	Name string
+	Host string
+	IP   string
 }
 
 type Es struct {
-	host    string
-	elastic *elastic.Client
+	esURL   *url.URL
+	client  *http.Client
+	version []int
 }
 
-var (
-	ctx = context.Background()
-)
-
-func Connect(host string) (*Es, error) {
-	if !strings.Contains(host, ":") {
-		host = host + ":9200"
+func Connect(host string) (*Es, *PingResponse, error) {
+	u, err := url.Parse(host)
+	if err != nil {
+		return nil, nil, err
 	}
-	if !strings.Contains(host, "http") {
-		host = "http://" + host
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+	if u.Port() == "" {
+		u.Host = u.Host + ":9200"
 	}
 
-	client, err := elastic.NewClient(elastic.SetURL(host))
+	transport := &http.Transport{}
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	es := Es{esURL: u, client: client}
+
+	ping, err := es.Ping()
+
+	if err == nil {
+		vs := strings.Split(ping.Version, ".")
+		var ver []int
+		for _, v := range vs {
+			vi, err := strconv.Atoi(v)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to parse Elasticsearch version %s", ping.Version)
+			}
+			ver = append(ver, vi)
+		}
+		es.version = ver
+	}
+
+	return &es, ping, err
+}
+
+func (e Es) get(path string) (*http.Response, error) {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	resp, err := e.client.Get(reqURL.String())
+	return resp, err
+}
+
+func (e Es) getJson(path string) (map[string]interface{}, error) {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	resp, err := e.client.Get(reqURL.String())
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var body map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		return nil, err
+	}
+	return body, err
+}
+
+func (e Es) Ping() (*PingResponse, error) {
+	body, err := e.getJson("/")
 
 	if err != nil {
 		return nil, err
 	}
-	return &Es{host, client}, nil
+
+	return &PingResponse{
+		Status:      int(body["status"].(float64)),
+		ClusterName: body["cluster_name"].(string),
+		Version:     body["version"].(map[string]interface{})["number"].(string),
+	}, nil
 }
 
-func (e Es) Health() (*elastic.ClusterHealthResponse, error) {
-	return e.elastic.ClusterHealth().Do(ctx)
+func (e Es) Health() (*ClusterHealth, error) {
+	body, err := e.getJson("/_cluster/health")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClusterHealth{
+		ClusterName: body["cluster_name"].(string),
+		Status:      body["status"].(string),
+	}, nil
 }
 
 func (e Es) ListIndices() ([]string, error) {
-	return e.elastic.IndexNames()
-}
-func (e Es) ListNodes() ([]string, error) {
-	nodes, err := e.elastic.NodesInfo().Do(ctx)
+	body, err := e.getJson("/_all")
+
 	if err != nil {
 		return nil, err
 	}
-	var names []string
-	for k := range nodes.Nodes {
-		names = append(names, k)
+	result := make([]string, len(body))
+	idx := 0
+	for index := range body {
+		result[idx] = index
+		idx++
 	}
-	return names, nil
+	return result, nil
+}
+
+func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
+	body, err := e.getJson("/_nodes")
+
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := body["nodes"].(map[string]interface{})
+
+	result := make([]*ShortNodeInfo, len(nodes))
+	idx := 0
+	for node := range nodes {
+		nodeInfo := nodes[node].(map[string]interface{})
+
+		sni := &ShortNodeInfo{
+			Name: nodeInfo["name"].(string),
+			Host: nodeInfo["host"].(string),
+			IP:   nodeInfo["ip"].(string),
+		}
+		result[idx] = sni
+		idx++
+	}
+	return result, nil
+}
+
+func (sni ShortNodeInfo) String() string {
+	return fmt.Sprintf("%s@%s[%s]", sni.Name, sni.Host, sni.IP)
 }

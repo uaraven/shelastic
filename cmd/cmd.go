@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"shelastic/es"
 
 	"github.com/fatih/color"
@@ -27,18 +28,21 @@ func Connect() *ishell.Cmd {
 		Name: "connect",
 		Help: "Connect to ElasticSearch",
 		Func: func(c *ishell.Context) {
+			var host string
 			if len(c.Args) < 1 {
-				c.Println("Specify host to connect")
-				c.Println("connect <host>")
+				host = "localhost"
 			} else {
-				c.Println("Connecting to", c.Args[0])
-				var err error
-				context, err = es.Connect(c.Args[0])
-				if err == nil {
-					onConnect(context, c)
-				} else {
-					errorMsg(c, "Failed to connect to "+c.Args[0]+": "+err.Error())
-				}
+				host = c.Args[0]
+			}
+			c.Println("Connecting to", host)
+			var err error
+			var ping *es.PingResponse
+			context, ping, err = es.Connect(host)
+			if err == nil {
+				c.Println(fmt.Sprintf("Connected to %s (version %s)", ping.ClusterName, ping.Version))
+				onConnect(context, c)
+			} else {
+				errorMsg(c, fmt.Sprintf("Failed to connect to %s: %s", host, err.Error()))
 			}
 		},
 	}
@@ -63,7 +67,7 @@ func List() *ishell.Cmd {
 			if context != nil {
 				result, err := context.ListIndices()
 				if err != nil {
-					errorMsg(c, "Failed to retrieve list of indices:"+err.Error())
+					errorMsg(c, "Failed to retrieve list of indices: "+err.Error())
 				}
 				for _, index := range result {
 					c.Println(index)
@@ -81,10 +85,11 @@ func List() *ishell.Cmd {
 			if context != nil {
 				result, err := context.ListNodes()
 				if err != nil {
-					errorMsg(c, "Failed to retrieve list of nodes:"+err.Error())
-				}
-				for _, index := range result {
-					c.Println(index)
+					errorMsg(c, "Failed to retrieve list of nodes: "+err.Error())
+				} else {
+					for _, index := range result {
+						c.Println(index.String())
+					}
 				}
 			} else {
 				errorMsg(c, errNotConnected)
@@ -105,7 +110,6 @@ func onConnect(es *es.Es, c *ishell.Context) {
 		errorMsg(c, "Failed to retrieve Elastisearch cluster health: "+err.Error())
 		return
 	}
-	c.Println("Connected to", health.ClusterName)
 	var colorw func(...interface{}) string
 	switch health.Status {
 	case "yellow":
