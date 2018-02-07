@@ -28,9 +28,10 @@ type ShortNodeInfo struct {
 }
 
 type Es struct {
-	esURL   *url.URL
-	client  *http.Client
-	version []int
+	esURL       *url.URL
+	client      *http.Client
+	ClusterName string
+	version     []int
 }
 
 func Connect(host string) (*Es, *PingResponse, error) {
@@ -65,6 +66,7 @@ func Connect(host string) (*Es, *PingResponse, error) {
 			ver = append(ver, vi)
 		}
 		es.version = ver
+		es.ClusterName = ping.ClusterName
 	}
 
 	return &es, ping, err
@@ -169,5 +171,5 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 }
 
 func (sni ShortNodeInfo) String() string {
-	return fmt.Sprintf("%s@%s[%s]", sni.Name, sni.Host, sni.IP)
+	return fmt.Sprintf("%s @ %s[%s]", sni.Name, sni.Host, sni.IP)
 }
