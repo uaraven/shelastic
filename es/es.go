@@ -8,7 +8,8 @@ import (
 )
 
 type EsConnection interface {
-	Status() string
+	Health() *elastic.ClusterHealthResponse
+	ListIndices() []string
 }
 
 type Es struct {
@@ -20,7 +21,7 @@ var (
 	ctx = context.Background()
 )
 
-func Connect(host string) *Es {
+func Connect(host string) (*Es, error) {
 
 	if !strings.Contains(host, ":") {
 		host = host + ":9200"
@@ -32,16 +33,15 @@ func Connect(host string) *Es {
 	client, err := elastic.NewClient(elastic.SetURL(host))
 
 	if err != nil {
-		// Handle error
-		panic(err)
+		return nil, err
 	}
-	return &Es{host, client}
+	return &Es{host, client}, nil
 }
 
-func (e Es) Health() *elastic.ClusterHealthResponse {
-	response, error := e.elastic.ClusterHealth().Do(ctx)
-	if error != nil {
-		panic(error)
-	}
-	return response
+func (e Es) Health() (*elastic.ClusterHealthResponse, error) {
+	return e.elastic.ClusterHealth().Do(ctx)
+}
+
+func (e Es) ListIndices() ([]string, error) {
+	return e.elastic.IndexNames()
 }
