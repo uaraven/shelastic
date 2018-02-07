@@ -22,7 +22,6 @@ var (
 )
 
 func Connect(host string) (*Es, error) {
-
 	if !strings.Contains(host, ":") {
 		host = host + ":9200"
 	}
@@ -44,4 +43,15 @@ func (e Es) Health() (*elastic.ClusterHealthResponse, error) {
 
 func (e Es) ListIndices() ([]string, error) {
 	return e.elastic.IndexNames()
+}
+func (e Es) ListNodes() ([]string, error) {
+	nodes, err := e.elastic.NodesInfo().Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for k := range nodes.Nodes {
+		names = append(names, k)
+	}
+	return names, nil
 }

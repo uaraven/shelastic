@@ -10,12 +10,16 @@ import (
 var (
 	context *es.Es
 
-	Commands []*ishell.Cmd = []*ishell.Cmd{
+	Commands = []*ishell.Cmd{
 		Connect(),
 		List(),
 	}
 
 	red = color.New(color.FgRed).SprintFunc()
+)
+
+const (
+	errNotConnected = "Not connected to Elasticsearch cluster"
 )
 
 func Connect() *ishell.Cmd {
@@ -47,8 +51,7 @@ func List() *ishell.Cmd {
 		Func: func(c *ishell.Context) {
 			if len(c.Args) < 1 {
 				c.Println("Specify what to list")
-				c.Println("list indices|hosts")
-			} else {
+				c.Println("list indices|nodes")
 			}
 		},
 	}
@@ -60,13 +63,31 @@ func List() *ishell.Cmd {
 			if context != nil {
 				result, err := context.ListIndices()
 				if err != nil {
-					errorMsg(c, "Failed to retrieve list of indices"+err.Error())
+					errorMsg(c, "Failed to retrieve list of indices:"+err.Error())
 				}
 				for _, index := range result {
 					c.Println(index)
 				}
 			} else {
-				errorMsg(c, "No connected")
+				errorMsg(c, errNotConnected)
+			}
+		},
+	})
+
+	list.AddCmd(&ishell.Cmd{
+		Name: "nodes",
+		Help: "List nodes",
+		Func: func(c *ishell.Context) {
+			if context != nil {
+				result, err := context.ListNodes()
+				if err != nil {
+					errorMsg(c, "Failed to retrieve list of nodes:"+err.Error())
+				}
+				for _, index := range result {
+					c.Println(index)
+				}
+			} else {
+				errorMsg(c, errNotConnected)
 			}
 		},
 	})
@@ -95,5 +116,5 @@ func onConnect(es *es.Es, c *ishell.Context) {
 		colorw = color.New(color.FgGreen).SprintFunc()
 	}
 	c.Println("Status:", colorw(health.Status))
-	c.SetPrompt(health.ClusterName + " > ")
+	c.SetPrompt(health.ClusterName + " $> ")
 }

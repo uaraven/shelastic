@@ -16,11 +16,9 @@ func main() {
 	// display welcome info.
 	shell.Println("Elasticsearch shell")
 
-	for _, cmd := range cmd.Commands {
-		shell.AddCmd(cmd)
+	for _, c := range cmd.Commands {
+		shell.AddCmd(c)
 	}
-
-	// shell.AddCmd(cmd.Connect())
 
 	// run shell
 	shell.Start()
