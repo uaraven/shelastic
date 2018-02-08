@@ -1,6 +1,6 @@
 ## shelastic 
 
-Elastic search shell
+Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 
 ### Commands
 
@@ -21,7 +21,7 @@ Elastic search shell
   - Index metadata operations:
     - [ ] View settings
     - [ ] Change settings
-    - [ ] View mappings
+    - [x] View mappings
     - [ ] View routing
     - [ ] Change routing
     - [ ] View statistics
