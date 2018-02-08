@@ -13,27 +13,26 @@ import (
 	"github.com/goware/urlx"
 )
 
-type Displayable interface {
-	ShortString() string
-	String() string
-}
-
+// PingResponse contains cluster name and ES version - response to ping command
 type PingResponse struct {
 	ClusterName string
 	Version     string
 }
 
+// ClusterHealth holds cluster health information
 type ClusterHealth struct {
 	ClusterName string
 	Status      string
 }
 
+// ShortNodeInfo holds minimal node information
 type ShortNodeInfo struct {
 	Name string
 	Host string
 	IP   string
 }
 
+// Es holds connection information for Elasticsearch cluster
 type Es struct {
 	host        string
 	esURL       *url.URL
@@ -42,6 +41,7 @@ type Es struct {
 	version     []int
 }
 
+// Connect initiates connection to an Elasticsearch cluster node specified by host argument
 func Connect(host string) (*Es, *PingResponse, error) {
 	if !strings.Contains(host, ":") {
 		host = host + ":9200"
@@ -82,42 +82,9 @@ func Connect(host string) (*Es, *PingResponse, error) {
 	return &es, ping, err
 }
 
-func (e Es) get(path string) (*http.Response, error) {
-	pathURL, err := url.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-	reqURL := e.esURL.ResolveReference(pathURL)
-	resp, err := e.client.Get(reqURL.String())
-	return resp, err
-}
-
-func (e Es) getJson(path string) (map[string]interface{}, error) {
-	pathURL, err := url.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-	reqURL := e.esURL.ResolveReference(pathURL)
-	resp, err := e.client.Get(reqURL.String())
-	if err != nil {
-		return nil, err
-	}
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var body map[string]interface{}
-
-	if err := json.Unmarshal(bodyBytes, &body); err != nil {
-		return nil, err
-	}
-	return body, err
-}
-
+// Ping performs ping request to an ES node
 func (e Es) Ping() (*PingResponse, error) {
-	body, err := e.getJson("/")
+	body, err := e.getJSON("/")
 
 	if err != nil {
 		return nil, err
@@ -129,8 +96,9 @@ func (e Es) Ping() (*PingResponse, error) {
 	}, nil
 }
 
+// Health returns current ClusterHealth
 func (e Es) Health() (*ClusterHealth, error) {
-	body, err := e.getJson("/_cluster/health")
+	body, err := e.getJSON("/_cluster/health")
 
 	if err != nil {
 		return nil, err
@@ -142,8 +110,9 @@ func (e Es) Health() (*ClusterHealth, error) {
 	}, nil
 }
 
+// ListIndices returns slice of strings containing names of indices
 func (e Es) ListIndices() ([]string, error) {
-	body, err := e.getJson("/_all")
+	body, err := e.getJSON("/_all")
 
 	if err != nil {
 		return nil, err
@@ -157,8 +126,9 @@ func (e Es) ListIndices() ([]string, error) {
 	return result, nil
 }
 
+// ListNodes returns slice of *ShortNodeInfo structs containing node information
 func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
-	body, err := e.getJson("/_nodes")
+	body, err := e.getJSON("/_nodes")
 
 	if err != nil {
 		return nil, err
@@ -182,8 +152,9 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 	return result, nil
 }
 
+// IndexViewMapping returns string containing JSON of mapping information
 func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (string, error) {
-	body, err := e.getJson(fmt.Sprintf("/%s/_mapping", indexName))
+	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
 
 	if err != nil {
 		return "", err
@@ -228,4 +199,38 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 
 func (sni ShortNodeInfo) String() string {
 	return fmt.Sprintf("%s @ %s [%s]", sni.Name, sni.Host, sni.IP)
+}
+
+func (e Es) get(path string) (*http.Response, error) {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	resp, err := e.client.Get(reqURL.String())
+	return resp, err
+}
+
+func (e Es) getJSON(path string) (map[string]interface{}, error) {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	resp, err := e.client.Get(reqURL.String())
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var body map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		return nil, err
+	}
+	return body, err
 }
