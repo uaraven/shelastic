@@ -15,6 +15,7 @@ var (
 		Connect(),
 		Disconnect(),
 		List(),
+		Index(),
 	}
 
 	cl  = color.New(color.FgBlue).SprintfFunc()
@@ -110,6 +111,58 @@ func List() *ishell.Cmd {
 	})
 
 	return list
+}
+
+func Index() *ishell.Cmd {
+	index := &ishell.Cmd{
+		Name: "index",
+		Help: "Index operations",
+	}
+
+	view := &ishell.Cmd{
+		Name: "view",
+		Help: "View index data",
+	}
+
+	view.AddCmd(&ishell.Cmd{
+		Name: "mapping",
+		Help: "View index mapping. Usage: index view mapping <index-name> [<doc> [<property>]]",
+		Func: viewIndexMapping,
+	})
+
+	index.AddCmd(view)
+	return index
+}
+
+func viewIndexMapping(c *ishell.Context) {
+	if context != nil {
+		indexName := ""
+		docType := ""
+		property := ""
+
+		if len(c.Args) >= 1 {
+			indexName = c.Args[0]
+		}
+		if len(c.Args) >= 2 {
+			docType = c.Args[1]
+		}
+		if len(c.Args) >= 3 {
+			property = c.Args[2]
+		}
+		if indexName == "" {
+			errorMsg(c, "Index name not specified")
+			return
+		}
+
+		result, err := context.IndexViewMapping(indexName, docType, property)
+		if err != nil {
+			errorMsg(c, err.Error())
+		}
+		cprintln(c, result)
+
+	} else {
+		errorMsg(c, errNotConnected)
+	}
 }
 
 func cprintln(c *ishell.Context, format string, params ...interface{}) {

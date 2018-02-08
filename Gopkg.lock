@@ -2,6 +2,18 @@
 
 
 [[projects]]
+  name = "github.com/PuerkitoBio/purell"
+  packages = ["."]
+  revision = "0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4"
+  version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/PuerkitoBio/urlesc"
+  packages = ["."]
+  revision = "de5bf2ad457846296e2031421a34e2568e304e35"
+
+[[projects]]
   name = "github.com/fatih/color"
   packages = ["."]
   revision = "570b54cabe6b8eb0bc2dfce68d964677d63b5260"
@@ -12,6 +24,12 @@
   name = "github.com/flynn-archive/go-shlex"
   packages = ["."]
   revision = "3f9db97f856818214da2e1057f8ad84803971cff"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/goware/urlx"
+  packages = ["."]
+  revision = "06d8eeb3ce171b5617a3f8ef24451df26ca971ef"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -27,9 +45,37 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/net"
+  packages = ["idna"]
+  revision = "2fb46b16b8dda405028c50f7c7f0f9dd1fa6bfb1"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
   revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/text"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+    "width"
+  ]
+  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
 
 [[projects]]
   branch = "v2"
@@ -46,6 +92,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ad09977fa71eb309f5a3df782334cb3e3e34c9a8357baedf2afde4d6fbe2157e"
+  inputs-digest = "451a19d9d0e2cdb109e98ff975316e4e8837ec120faa0da911f8fdf9093ea927"
   solver-name = "gps-cdcl"
   solver-version = 1

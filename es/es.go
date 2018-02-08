@@ -5,13 +5,20 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
+
+	"net/url"
+
+	"github.com/goware/urlx"
 )
 
+type Displayable interface {
+	ShortString() string
+	String() string
+}
+
 type PingResponse struct {
-	Status      int
 	ClusterName string
 	Version     string
 }
@@ -28,6 +35,7 @@ type ShortNodeInfo struct {
 }
 
 type Es struct {
+	host        string
 	esURL       *url.URL
 	client      *http.Client
 	ClusterName string
@@ -35,15 +43,15 @@ type Es struct {
 }
 
 func Connect(host string) (*Es, *PingResponse, error) {
-	u, err := url.Parse(host)
+	if !strings.Contains(host, ":") {
+		host = host + ":9200"
+	}
+	if !strings.Contains(host, "://") {
+		host = "http://" + host
+	}
+	u, err := urlx.Parse(host)
 	if err != nil {
 		return nil, nil, err
-	}
-	if u.Scheme == "" {
-		u.Scheme = "http"
-	}
-	if u.Port() == "" {
-		u.Host = u.Host + ":9200"
 	}
 
 	transport := &http.Transport{}
@@ -51,7 +59,7 @@ func Connect(host string) (*Es, *PingResponse, error) {
 		Transport: transport,
 	}
 
-	es := Es{esURL: u, client: client}
+	es := Es{client: client, esURL: u, host: host}
 
 	ping, err := es.Ping()
 
@@ -67,6 +75,8 @@ func Connect(host string) (*Es, *PingResponse, error) {
 		}
 		es.version = ver
 		es.ClusterName = ping.ClusterName
+	} else {
+		return nil, nil, err
 	}
 
 	return &es, ping, err
@@ -89,6 +99,9 @@ func (e Es) getJson(path string) (map[string]interface{}, error) {
 	}
 	reqURL := e.esURL.ResolveReference(pathURL)
 	resp, err := e.client.Get(reqURL.String())
+	if err != nil {
+		return nil, err
+	}
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -111,7 +124,6 @@ func (e Es) Ping() (*PingResponse, error) {
 	}
 
 	return &PingResponse{
-		Status:      int(body["status"].(float64)),
 		ClusterName: body["cluster_name"].(string),
 		Version:     body["version"].(map[string]interface{})["number"].(string),
 	}, nil
@@ -170,6 +182,50 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 	return result, nil
 }
 
+func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (string, error) {
+	body, err := e.getJson(fmt.Sprintf("/%s/_mapping", indexName))
+
+	if err != nil {
+		return "", err
+	}
+
+	if doc, ok := body["error"]; ok {
+		body = doc.(map[string]interface{})
+		reason := body["reason"].(string)
+		return "", fmt.Errorf("Index %s failed: %s", indexName, reason)
+	}
+
+	if doc, ok := body[indexName]; ok {
+		body = doc.(map[string]interface{})
+	}
+
+	if doc, ok := body["mappings"]; ok {
+		body = doc.(map[string]interface{})
+	}
+
+	if documentType != "" {
+		if doc, ok := body[documentType]; ok {
+			body = doc.(map[string]interface{})["properties"].(map[string]interface{})
+		} else {
+			return "", fmt.Errorf("No '%s' document in mapping", documentType)
+		}
+	}
+	if propertyName != "" {
+		if doc, ok := body[propertyName]; ok {
+			body = doc.(map[string]interface{})
+		} else {
+			return "", fmt.Errorf("No '%s' property in document '%s'", propertyName, documentType)
+		}
+	}
+
+	data, err := json.MarshalIndent(body, "", "  ")
+	if err == nil {
+		return string(data), nil
+	}
+	return "", err
+
+}
+
 func (sni ShortNodeInfo) String() string {
-	return fmt.Sprintf("%s @ %s[%s]", sni.Name, sni.Host, sni.IP)
+	return fmt.Sprintf("%s @ %s [%s]", sni.Name, sni.Host, sni.IP)
 }
