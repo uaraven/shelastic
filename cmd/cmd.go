@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"shelastic/es"
 
 	"github.com/fatih/color"
@@ -12,9 +13,12 @@ var (
 
 	Commands = []*ishell.Cmd{
 		Connect(),
+		Disconnect(),
 		List(),
+		Index(),
 	}
 
+	cl  = color.New(color.FgBlue).SprintfFunc()
 	red = color.New(color.FgRed).SprintFunc()
 )
 
@@ -27,19 +31,38 @@ func Connect() *ishell.Cmd {
 		Name: "connect",
 		Help: "Connect to ElasticSearch",
 		Func: func(c *ishell.Context) {
-			if len(c.Args) < 1 {
-				c.Println("Specify host to connect")
-				c.Println("connect <host>")
-			} else {
-				c.Println("Connecting to", c.Args[0])
-				var err error
-				context, err = es.Connect(c.Args[0])
-				if err == nil {
-					onConnect(context, c)
-				} else {
-					errorMsg(c, "Failed to connect to "+c.Args[0]+": "+err.Error())
-				}
+			if context != nil {
+				errorMsg(c, "Already connected to %s. Disconnect before connecting to another cluster", context.ClusterName)
+				return
 			}
+			var host string
+			if len(c.Args) < 1 {
+				host = "localhost"
+			} else {
+				host = c.Args[0]
+			}
+			cprintln(c, "Connecting to %s", host)
+			var err error
+			var ping *es.PingResponse
+			context, ping, err = es.Connect(host)
+			if err == nil {
+				cprintln(c, "Connected to %s (version %s)", ping.ClusterName, ping.Version)
+				onConnect(context, c)
+			} else {
+				errorMsg(c, fmt.Sprintf("Failed to connect to %s: %s", host, err.Error()))
+			}
+		},
+	}
+}
+
+func Disconnect() *ishell.Cmd {
+	return &ishell.Cmd{
+		Name: "disconnect",
+		Help: "Close connection to ElasticSearch",
+		Func: func(c *ishell.Context) {
+			cprintln(c, "Disconnected from %s", context.ClusterName)
+			context = nil
+			c.SetPrompt("$> ")
 		},
 	}
 }
@@ -48,12 +71,6 @@ func List() *ishell.Cmd {
 	list := &ishell.Cmd{
 		Name: "list",
 		Help: "List entities",
-		Func: func(c *ishell.Context) {
-			if len(c.Args) < 1 {
-				c.Println("Specify what to list")
-				c.Println("list indices|nodes")
-			}
-		},
 	}
 
 	list.AddCmd(&ishell.Cmd{
@@ -63,10 +80,10 @@ func List() *ishell.Cmd {
 			if context != nil {
 				result, err := context.ListIndices()
 				if err != nil {
-					errorMsg(c, "Failed to retrieve list of indices:"+err.Error())
+					errorMsg(c, "Failed to retrieve list of indices: %s", err.Error())
 				}
 				for _, index := range result {
-					c.Println(index)
+					cprintln(c, index)
 				}
 			} else {
 				errorMsg(c, errNotConnected)
@@ -81,10 +98,11 @@ func List() *ishell.Cmd {
 			if context != nil {
 				result, err := context.ListNodes()
 				if err != nil {
-					errorMsg(c, "Failed to retrieve list of nodes:"+err.Error())
-				}
-				for _, index := range result {
-					c.Println(index)
+					errorMsg(c, "Failed to retrieve list of nodes: %s", err.Error())
+				} else {
+					for _, index := range result {
+						cprintln(c, index.String())
+					}
 				}
 			} else {
 				errorMsg(c, errNotConnected)
@@ -95,17 +113,72 @@ func List() *ishell.Cmd {
 	return list
 }
 
-func errorMsg(c *ishell.Context, message string) {
-	c.Println(red(message))
+func Index() *ishell.Cmd {
+	index := &ishell.Cmd{
+		Name: "index",
+		Help: "Index operations",
+	}
+
+	view := &ishell.Cmd{
+		Name: "view",
+		Help: "View index data",
+	}
+
+	view.AddCmd(&ishell.Cmd{
+		Name: "mapping",
+		Help: "View index mapping. Usage: index view mapping <index-name> [<doc> [<property>]]",
+		Func: viewIndexMapping,
+	})
+
+	index.AddCmd(view)
+	return index
+}
+
+func viewIndexMapping(c *ishell.Context) {
+	if context != nil {
+		indexName := ""
+		docType := ""
+		property := ""
+
+		if len(c.Args) >= 1 {
+			indexName = c.Args[0]
+		}
+		if len(c.Args) >= 2 {
+			docType = c.Args[1]
+		}
+		if len(c.Args) >= 3 {
+			property = c.Args[2]
+		}
+		if indexName == "" {
+			errorMsg(c, "Index name not specified")
+			return
+		}
+
+		result, err := context.IndexViewMapping(indexName, docType, property)
+		if err != nil {
+			errorMsg(c, err.Error())
+		}
+		cprintln(c, result)
+
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
+func cprintln(c *ishell.Context, format string, params ...interface{}) {
+	c.Println(cl(format, params...))
+}
+
+func errorMsg(c *ishell.Context, message string, params ...interface{}) {
+	c.Println(red(fmt.Sprintf(message, params...)))
 }
 
 func onConnect(es *es.Es, c *ishell.Context) {
 	health, err := es.Health()
 	if err != nil {
-		errorMsg(c, "Failed to retrieve Elastisearch cluster health: "+err.Error())
+		errorMsg(c, "Failed to retrieve Elastisearch cluster health: %s", err.Error())
 		return
 	}
-	c.Println("Connected to", health.ClusterName)
 	var colorw func(...interface{}) string
 	switch health.Status {
 	case "yellow":
@@ -115,6 +188,6 @@ func onConnect(es *es.Es, c *ishell.Context) {
 	case "green":
 		colorw = color.New(color.FgGreen).SprintFunc()
 	}
-	c.Println("Status:", colorw(health.Status))
+	cprintln(c, "Status: %s", colorw(health.Status))
 	c.SetPrompt(health.ClusterName + " $> ")
 }
