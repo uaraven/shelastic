@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
-	"net/url"
-
-	"github.com/goware/urlx"
+	"gopkg.in/yaml.v2"
 )
 
 // PingResponse contains cluster name and ES version - response to ping command
@@ -21,8 +20,18 @@ type PingResponse struct {
 
 // ClusterHealth holds cluster health information
 type ClusterHealth struct {
-	ClusterName string
-	Status      string
+	ClusterName             string `json:"cluster_name" yaml:"Cluster Name"`
+	Status                  string `json:"status" yaml:"Status"`
+	NodeCount               int    `json:"number_of_nodes" yaml:"Nodes"`
+	DataNodeCount           int    `json:"number_of_data-nodes" yaml:"Data Nodes"`
+	ActiveShards            int    `json:"active_shards" yaml:"Active Shards"`
+	ActivePrimaryShards     int    `json:"active_primary_shards" yaml:"Active Primary Shards"`
+	RelocatingShards        int    `json:"relocating_shards" yaml:"Relocating Shards"`
+	InitializingShards      int    `json:"initializing_shards" yaml:"Initializing Shards"`
+	UnassignedShards        int    `json:"unassigned_shards" yaml:"Unassigned Shards"`
+	DelayedUnassignedShards int    `json:"delayed_unassigned_shards" yaml:"Delayed Unassigned Shards"`
+	PendingTasks            int    `json:"number_of_pending_tasks" yaml:"Pending Tasks"`
+	InFlightFetch           int    `json:"number_of_in_flight_fetch" yaml:"In Flight Fetches"`
 }
 
 // ShortNodeInfo holds minimal node information
@@ -30,6 +39,11 @@ type ShortNodeInfo struct {
 	Name string
 	Host string
 	IP   string
+}
+
+type IndexSettings struct {
+	NumberOfShards   int
+	NumberOfReplicas int
 }
 
 // Es holds connection information for Elasticsearch cluster
@@ -49,7 +63,7 @@ func Connect(host string) (*Es, *PingResponse, error) {
 	if !strings.Contains(host, "://") {
 		host = "http://" + host
 	}
-	u, err := urlx.Parse(host)
+	u, err := url.Parse(host)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -98,16 +112,22 @@ func (e Es) Ping() (*PingResponse, error) {
 
 // Health returns current ClusterHealth
 func (e Es) Health() (*ClusterHealth, error) {
-	body, err := e.getJSON("/_cluster/health")
+	body, err := e.get("/_cluster/health")
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &ClusterHealth{
-		ClusterName: body["cluster_name"].(string),
-		Status:      body["status"].(string),
-	}, nil
+	var data ClusterHealth
+	bodyBytes, err := ioutil.ReadAll(body.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
 
 // ListIndices returns slice of strings containing names of indices
@@ -151,6 +171,15 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 	}
 	return result, nil
 }
+
+// func (e Es) IndexStatus(indexName string) (string, error) {
+// 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return "", nil
+// }
 
 // IndexViewMapping returns string containing JSON of mapping information
 func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (string, error) {
@@ -199,6 +228,27 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 
 func (sni ShortNodeInfo) String() string {
 	return fmt.Sprintf("%s @ %s [%s]", sni.Name, sni.Host, sni.IP)
+}
+
+func (h ClusterHealth) String() string {
+	y, err := yaml.Marshal(h)
+	if err != nil {
+		return "Error"
+	}
+	return string(y)
+	// 	return fmt.Sprintf(`Cluster:               %8s
+	// Status:                %8s
+	// Nodes:                     %4d
+	// Data nodes:                %4d
+	// Active Shards:             %4d
+	// Active Primary Shards:     %4d
+	// Unassigned Shards:         %4d
+	// Delayed Unassigned Shards: %4d
+	// Initializing Shards:       %4d
+	// Relocating Shards:         %4d
+	// Pending Tasks:             %4d
+	// In Flight Fetches:         %4d`,
+	// 		h.ClusterName, h.Status, h.NodeCount, h.DataNodeCount, h.ActiveShards, h.ActivePrimaryShards, h.UnassignedShards, h.DelayedUnassignedShards, h.InitializingShards, h.RelocatingShards, h.PendingTasks, h.InFlightFetch)
 }
 
 func (e Es) get(path string) (*http.Response, error) {
