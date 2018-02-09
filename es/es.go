@@ -257,6 +257,13 @@ func (e Es) GetAliases(indexName string) ([]*ShortAliasInfo, error) {
 // 	return "", nil
 // }
 
+func getAnyKey(m map[string]interface{}) string {
+	for k := range m {
+		return k
+	}
+	return ""
+}
+
 // IndexViewMapping returns string containing JSON of mapping information
 func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (string, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
@@ -271,9 +278,8 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 		return "", fmt.Errorf("Index %s failed: %s", indexName, reason)
 	}
 
-	if doc, ok := body[indexName]; ok {
-		body = doc.(map[string]interface{})
-	}
+	indexKey := getAnyKey(body) // Retrieve first key as it will be our index name. This helps to work around requests by alias
+	body = body[indexKey].(map[string]interface{})
 
 	if doc, ok := body["mappings"]; ok {
 		body = doc.(map[string]interface{})
