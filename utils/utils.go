@@ -1,4 +1,4 @@
-package es
+package utils
 
 import (
 	"gopkg.in/yaml.v2"

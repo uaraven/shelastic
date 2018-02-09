@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"shelastic/utils"
+	"strconv"
 )
 
 // ShortIndexInfo contains basic index information
@@ -104,7 +106,7 @@ func (e Es) GetAliases(indexName string) ([]*ShortAliasInfo, error) {
 	i := 0
 	for alias := range body {
 		filter := body[alias].(map[string]interface{})
-		filterYaml, err := MapToYaml(filter)
+		filterYaml, err := utils.MapToYaml(filter)
 
 		if err != nil {
 			return nil, err
@@ -171,6 +173,39 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 		return string(data), nil
 	}
 	return "", err
+}
+
+// IndexViewSettings retrieves index settings
+func (e Es) IndexViewSettings(indexName string) (*IndexSettings, error) {
+	body, err := e.getJSON(fmt.Sprintf("/%s/_settings", indexName))
+
+	if err != nil {
+		return nil, err
+	}
+	if doc, ok := body["error"]; ok {
+		body = doc.(map[string]interface{})
+		reason := body["reason"].(string)
+		return nil, fmt.Errorf("Index %s failed: %s", indexName, reason)
+	}
+
+	indexName = e.resolveAlias(indexName)
+
+	settings := body[indexName].(map[string]interface{})["settings"].(map[string]interface{})["index"].(map[string]interface{})
+
+	noReplicas, err := strconv.Atoi(settings["number_of_replicas"].(string))
+	if err != nil {
+		return nil, err
+	}
+
+	noShards, err := strconv.Atoi(settings["number_of_shards"].(string))
+	if err != nil {
+		return nil, err
+	}
+
+	return &IndexSettings{
+		NumberOfReplicas: noReplicas,
+		NumberOfShards:   noShards,
+	}, nil
 }
 
 // Flush flushes ES index

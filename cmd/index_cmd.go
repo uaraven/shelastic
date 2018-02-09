@@ -21,6 +21,12 @@ func Index() *ishell.Cmd {
 		Func: viewIndexMapping,
 	})
 
+	view.AddCmd(&ishell.Cmd{
+		Name: "settings",
+		Help: "View index settings. Usage: index view settings <index-name>",
+		Func: viewIndexSettings,
+	})
+
 	index.AddCmd(view)
 	index.AddCmd(&ishell.Cmd{
 		Name: "flush",
@@ -75,6 +81,26 @@ func viewIndexMapping(c *ishell.Context) {
 			errorMsg(c, err.Error())
 		}
 		cprintln(c, result)
+
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
+func viewIndexSettings(c *ishell.Context) {
+	if context != nil {
+
+		if len(c.Args) < 1 {
+			errorMsg(c, "Index name not specified")
+			return
+		}
+		indexName := c.Args[0]
+
+		result, err := context.IndexViewSettings(indexName)
+		if err != nil {
+			errorMsg(c, err.Error())
+		}
+		cprintln(c, "Number of shards: %d\nNumber of replicas: %d", result.NumberOfShards, result.NumberOfReplicas)
 
 	} else {
 		errorMsg(c, errNotConnected)
