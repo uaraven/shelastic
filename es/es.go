@@ -42,6 +42,7 @@ type ShortNodeInfo struct {
 	IP   string
 }
 
+// ShortIndexInfo contains basic index information
 type ShortIndexInfo struct {
 	Name          string
 	DocumentCount int
@@ -50,12 +51,14 @@ type ShortIndexInfo struct {
 	Aliases       []*ShortAliasInfo
 }
 
+// ShortAliasInfo contains basic alias information
 type ShortAliasInfo struct {
 	Name     string
 	Filtered bool
 	Filter   string
 }
 
+// IndexSettings contains index settings (surprise!)
 type IndexSettings struct {
 	NumberOfShards   int
 	NumberOfReplicas int
@@ -208,6 +211,8 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 	return result, nil
 }
 
+// GetAliases retrieves aliases for a given index
+// Each alias contains name and filter in yaml format, if alias is filtered
 func (e Es) GetAliases(indexName string) ([]*ShortAliasInfo, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_alias/*", indexName))
 
