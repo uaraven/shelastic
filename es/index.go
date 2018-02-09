@@ -65,6 +65,26 @@ func (e Es) ListIndices() ([]*ShortIndexInfo, error) {
 	return result, nil
 }
 
+func (e Es) buildAliasCache() (map[string]string, error) {
+	body, err := e.getJSON("/_alias")
+
+	fmt.Println(body)
+
+	if err != nil {
+		return nil, err
+	}
+	var result = make(map[string]string)
+	for index := range body {
+		aliases := body[index].(map[string]interface{})["aliases"].(map[string]interface{})
+		if len(aliases) > 0 {
+			for a := range aliases {
+				result[a] = index
+			}
+		}
+	}
+	return result, nil
+}
+
 // GetAliases retrieves aliases for a given index
 // Each alias contains name and filter in yaml format, if alias is filtered
 func (e Es) GetAliases(indexName string) ([]*ShortAliasInfo, error) {
@@ -102,15 +122,6 @@ func (e Es) GetAliases(indexName string) ([]*ShortAliasInfo, error) {
 	return result, nil
 }
 
-// func (e Es) IndexStatus(indexName string) (string, error) {
-// 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	return "", nil
-// }
-
 func getAnyKey(m map[string]interface{}) string {
 	for k := range m {
 		return k
@@ -132,8 +143,9 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 		return "", fmt.Errorf("Index %s failed: %s", indexName, reason)
 	}
 
-	indexKey := getAnyKey(body) // Retrieve first key as it will be our index name. This helps to work around requests by alias
-	body = body[indexKey].(map[string]interface{})
+	indexName = e.resolveAlias(indexName)
+
+	body = body[indexName].(map[string]interface{})
 
 	if doc, ok := body["mappings"]; ok {
 		body = doc.(map[string]interface{})
@@ -159,7 +171,18 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 		return string(data), nil
 	}
 	return "", err
+}
 
+// Flush flushes ES index
+func (e Es) Flush(indexName string, force bool, wait bool) error {
+	var path string
+	if indexName != "" {
+		path = fmt.Sprintf("/%s/_flush", indexName)
+	} else {
+		path = "/_flush"
+	}
+	_, err := e.post(path, "")
+	return err
 }
 
 func (sii ShortIndexInfo) String() string {
@@ -173,4 +196,11 @@ func (sai ShortAliasInfo) String() string {
 		buffer.WriteString("*")
 	}
 	return buffer.String()
+}
+
+func (e Es) resolveAlias(indexName string) string {
+	if idx, ok := e.aliases[indexName]; ok {
+		indexName = idx
+	}
+	return indexName
 }

@@ -16,7 +16,6 @@ type PingResponse struct {
 	Version     string
 }
 
-
 // Es holds connection information for Elasticsearch cluster
 type Es struct {
 	host        string
@@ -24,6 +23,7 @@ type Es struct {
 	client      *http.Client
 	ClusterName string
 	version     []int
+	aliases     map[string]string
 }
 
 // Connect initiates connection to an Elasticsearch cluster node specified by host argument
@@ -64,6 +64,14 @@ func Connect(host string) (*Es, *PingResponse, error) {
 		return nil, nil, err
 	}
 
+	aliases, err := es.buildAliasCache()
+
+	if err != nil {
+		return nil, nil, err
+	}
+	fmt.Println(aliases)
+	es.aliases = aliases
+
 	return &es, ping, err
 }
 
@@ -99,38 +107,4 @@ func (e Es) Health() (*ClusterHealth, error) {
 		return nil, err
 	}
 	return &data, nil
-}
-
-func (e Es) get(path string) (*http.Response, error) {
-	pathURL, err := url.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-	reqURL := e.esURL.ResolveReference(pathURL)
-	resp, err := e.client.Get(reqURL.String())
-	return resp, err
-}
-
-func (e Es) getJSON(path string) (map[string]interface{}, error) {
-	pathURL, err := url.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-	reqURL := e.esURL.ResolveReference(pathURL)
-	resp, err := e.client.Get(reqURL.String())
-	if err != nil {
-		return nil, err
-	}
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var body map[string]interface{}
-
-	if err := json.Unmarshal(bodyBytes, &body); err != nil {
-		return nil, err
-	}
-	return body, err
 }
