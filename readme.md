@@ -25,33 +25,33 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 ## Supported operations
 
 - Basic operations:
-  - [x] List index name
-  - [x] List basic node information - name, ip, hostname
+    - [x] List index name
+    - [x] List basic node information - name, ip, hostname
 - Index administration:
-  - [ ] Clear cache
-  - [x] Flush
-  - [ ] Optimize
-  - [ ] Refresh
+    - [ ] Clear cache
+    - [x] Flush
+    - [ ] Optimize
+    - [ ] Refresh
 - Index metadata operations:
-  - [ ] View settings
-  - [ ] Change settings
-  - [x] View mappings
-  - [ ] View routing
-  - [ ] Change routing
-  - [ ] View statistics
+    - [ ] View settings
+    - [ ] Change settings
+    - [x] View mappings
+    - [ ] View routing
+    - [ ] Change routing
+    - [ ] View statistics
 - Index operations:
-  - [ ] Insert/Update document
-  - [ ] Delete document
-  - [ ] View document by id
+    - [ ] Insert/Update document
+    - [ ] Delete document
+    - [ ] View document by id
 - Query operations:
-  - [ ] JSON requests
-  - [ ] SQL like?
+    - [ ] JSON requests
+    - [ ] SQL like?
 - Node operations:
-  - [ ] JVM stats
-    - [ ] JVM name and version
-    - [ ] JVM arguments
-  - [ ] OS stats
-    - [ ] CPU, memory
+    - [ ] JVM stats
+        - [ ] JVM name and version
+        - [ ] JVM arguments
+    - [ ] OS stats
+        - [ ] CPU, memory
 - Cluster operations
-  - Routing:
-    - [ ] Decomission a node
+    - Routing:
+        - [ ] Decomission a node
