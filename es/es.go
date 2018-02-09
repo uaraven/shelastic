@@ -1,6 +1,7 @@
 package es
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -39,6 +40,20 @@ type ShortNodeInfo struct {
 	Name string
 	Host string
 	IP   string
+}
+
+type ShortIndexInfo struct {
+	Name          string
+	DocumentCount int
+	DeletedCount  int
+	Size          int
+	Aliases       []*ShortAliasInfo
+}
+
+type ShortAliasInfo struct {
+	Name     string
+	Filtered bool
+	Filter   string
 }
 
 type IndexSettings struct {
@@ -130,18 +145,39 @@ func (e Es) Health() (*ClusterHealth, error) {
 	return &data, nil
 }
 
-// ListIndices returns slice of strings containing names of indices
-func (e Es) ListIndices() ([]string, error) {
-	body, err := e.getJSON("/_all")
+// ListIndices returns slice of *ShortIndexInfo containing names of indices
+func (e Es) ListIndices() ([]*ShortIndexInfo, error) {
+	body, err := e.getJSON("/_stats")
 
 	if err != nil {
 		return nil, err
 	}
-	result := make([]string, len(body))
-	idx := 0
+
+	body = body["indices"].(map[string]interface{})
+
+	result := make([]*ShortIndexInfo, len(body))
+	i := 0
 	for index := range body {
-		result[idx] = index
-		idx++
+		idx := body[index].(map[string]interface{})
+		prim := idx["primaries"].(map[string]interface{})
+		docs := prim["docs"].(map[string]interface{})
+		store := prim["store"].(map[string]interface{})
+
+		aliases, err := e.GetAliases(index)
+		if err != nil {
+			aliases = make([]*ShortAliasInfo, 0)
+		}
+
+		sii := &ShortIndexInfo{
+			Name:          index,
+			DocumentCount: int(docs["count"].(float64)),
+			DeletedCount:  int(docs["deleted"].(float64)),
+			Size:          int(store["size_in_bytes"].(float64)),
+			Aliases:       aliases,
+		}
+
+		result[i] = sii
+		i++
 	}
 	return result, nil
 }
@@ -168,6 +204,41 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 		}
 		result[idx] = sni
 		idx++
+	}
+	return result, nil
+}
+
+func (e Es) GetAliases(indexName string) ([]*ShortAliasInfo, error) {
+	body, err := e.getJSON(fmt.Sprintf("/%s/_alias/*", indexName))
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(body) == 0 {
+		return []*ShortAliasInfo{}, nil
+	}
+
+	body = body[indexName].(map[string]interface{})["aliases"].(map[string]interface{})
+
+	result := make([]*ShortAliasInfo, len(body))
+	i := 0
+	for alias := range body {
+		filter := body[alias].(map[string]interface{})
+		filterYaml, err := MapToYaml(filter)
+
+		if err != nil {
+			return nil, err
+		}
+
+		sai := &ShortAliasInfo{
+			Name:     alias,
+			Filtered: len(filter) > 0,
+			Filter:   filterYaml,
+		}
+
+		result[i] = sai
+		i++
 	}
 	return result, nil
 }
@@ -228,6 +299,19 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 
 func (sni ShortNodeInfo) String() string {
 	return fmt.Sprintf("%s @ %s [%s]", sni.Name, sni.Host, sni.IP)
+}
+
+func (sii ShortIndexInfo) String() string {
+	return fmt.Sprintf("%s [docs: %d, bytes: %d, aliases:%v]", sii.Name, sii.DocumentCount, sii.Size, sii.Aliases)
+}
+
+func (sai ShortAliasInfo) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString(sai.Name)
+	if sai.Filtered {
+		buffer.WriteString("*")
+	}
+	return buffer.String()
 }
 
 func (h ClusterHealth) String() string {

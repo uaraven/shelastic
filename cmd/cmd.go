@@ -103,7 +103,7 @@ func List() *ishell.Cmd {
 					errorMsg(c, "Failed to retrieve list of indices: %s", err.Error())
 				}
 				for _, index := range result {
-					cprintln(c, index)
+					cprintln(c, index.String())
 				}
 			} else {
 				errorMsg(c, errNotConnected)
