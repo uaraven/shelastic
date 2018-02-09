@@ -1,7 +1,6 @@
 package es
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,8 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-
-	"gopkg.in/yaml.v2"
 )
 
 // PingResponse contains cluster name and ES version - response to ping command
@@ -19,50 +16,6 @@ type PingResponse struct {
 	Version     string
 }
 
-// ClusterHealth holds cluster health information
-type ClusterHealth struct {
-	ClusterName             string `json:"cluster_name" yaml:"Cluster Name"`
-	Status                  string `json:"status" yaml:"Status"`
-	NodeCount               int    `json:"number_of_nodes" yaml:"Nodes"`
-	DataNodeCount           int    `json:"number_of_data-nodes" yaml:"Data Nodes"`
-	ActiveShards            int    `json:"active_shards" yaml:"Active Shards"`
-	ActivePrimaryShards     int    `json:"active_primary_shards" yaml:"Active Primary Shards"`
-	RelocatingShards        int    `json:"relocating_shards" yaml:"Relocating Shards"`
-	InitializingShards      int    `json:"initializing_shards" yaml:"Initializing Shards"`
-	UnassignedShards        int    `json:"unassigned_shards" yaml:"Unassigned Shards"`
-	DelayedUnassignedShards int    `json:"delayed_unassigned_shards" yaml:"Delayed Unassigned Shards"`
-	PendingTasks            int    `json:"number_of_pending_tasks" yaml:"Pending Tasks"`
-	InFlightFetch           int    `json:"number_of_in_flight_fetch" yaml:"In Flight Fetches"`
-}
-
-// ShortNodeInfo holds minimal node information
-type ShortNodeInfo struct {
-	Name string
-	Host string
-	IP   string
-}
-
-// ShortIndexInfo contains basic index information
-type ShortIndexInfo struct {
-	Name          string
-	DocumentCount int
-	DeletedCount  int
-	Size          int
-	Aliases       []*ShortAliasInfo
-}
-
-// ShortAliasInfo contains basic alias information
-type ShortAliasInfo struct {
-	Name     string
-	Filtered bool
-	Filter   string
-}
-
-// IndexSettings contains index settings (surprise!)
-type IndexSettings struct {
-	NumberOfShards   int
-	NumberOfReplicas int
-}
 
 // Es holds connection information for Elasticsearch cluster
 type Es struct {
@@ -146,204 +99,6 @@ func (e Es) Health() (*ClusterHealth, error) {
 		return nil, err
 	}
 	return &data, nil
-}
-
-// ListIndices returns slice of *ShortIndexInfo containing names of indices
-func (e Es) ListIndices() ([]*ShortIndexInfo, error) {
-	body, err := e.getJSON("/_stats")
-
-	if err != nil {
-		return nil, err
-	}
-
-	body = body["indices"].(map[string]interface{})
-
-	result := make([]*ShortIndexInfo, len(body))
-	i := 0
-	for index := range body {
-		idx := body[index].(map[string]interface{})
-		prim := idx["primaries"].(map[string]interface{})
-		docs := prim["docs"].(map[string]interface{})
-		store := prim["store"].(map[string]interface{})
-
-		aliases, err := e.GetAliases(index)
-		if err != nil {
-			aliases = make([]*ShortAliasInfo, 0)
-		}
-
-		sii := &ShortIndexInfo{
-			Name:          index,
-			DocumentCount: int(docs["count"].(float64)),
-			DeletedCount:  int(docs["deleted"].(float64)),
-			Size:          int(store["size_in_bytes"].(float64)),
-			Aliases:       aliases,
-		}
-
-		result[i] = sii
-		i++
-	}
-	return result, nil
-}
-
-// ListNodes returns slice of *ShortNodeInfo structs containing node information
-func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
-	body, err := e.getJSON("/_nodes")
-
-	if err != nil {
-		return nil, err
-	}
-
-	nodes := body["nodes"].(map[string]interface{})
-
-	result := make([]*ShortNodeInfo, len(nodes))
-	idx := 0
-	for node := range nodes {
-		nodeInfo := nodes[node].(map[string]interface{})
-
-		sni := &ShortNodeInfo{
-			Name: nodeInfo["name"].(string),
-			Host: nodeInfo["host"].(string),
-			IP:   nodeInfo["ip"].(string),
-		}
-		result[idx] = sni
-		idx++
-	}
-	return result, nil
-}
-
-// GetAliases retrieves aliases for a given index
-// Each alias contains name and filter in yaml format, if alias is filtered
-func (e Es) GetAliases(indexName string) ([]*ShortAliasInfo, error) {
-	body, err := e.getJSON(fmt.Sprintf("/%s/_alias/*", indexName))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(body) == 0 {
-		return []*ShortAliasInfo{}, nil
-	}
-
-	body = body[indexName].(map[string]interface{})["aliases"].(map[string]interface{})
-
-	result := make([]*ShortAliasInfo, len(body))
-	i := 0
-	for alias := range body {
-		filter := body[alias].(map[string]interface{})
-		filterYaml, err := MapToYaml(filter)
-
-		if err != nil {
-			return nil, err
-		}
-
-		sai := &ShortAliasInfo{
-			Name:     alias,
-			Filtered: len(filter) > 0,
-			Filter:   filterYaml,
-		}
-
-		result[i] = sai
-		i++
-	}
-	return result, nil
-}
-
-// func (e Es) IndexStatus(indexName string) (string, error) {
-// 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	return "", nil
-// }
-
-func getAnyKey(m map[string]interface{}) string {
-	for k := range m {
-		return k
-	}
-	return ""
-}
-
-// IndexViewMapping returns string containing JSON of mapping information
-func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (string, error) {
-	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
-
-	if err != nil {
-		return "", err
-	}
-
-	if doc, ok := body["error"]; ok {
-		body = doc.(map[string]interface{})
-		reason := body["reason"].(string)
-		return "", fmt.Errorf("Index %s failed: %s", indexName, reason)
-	}
-
-	indexKey := getAnyKey(body) // Retrieve first key as it will be our index name. This helps to work around requests by alias
-	body = body[indexKey].(map[string]interface{})
-
-	if doc, ok := body["mappings"]; ok {
-		body = doc.(map[string]interface{})
-	}
-
-	if documentType != "" {
-		if doc, ok := body[documentType]; ok {
-			body = doc.(map[string]interface{})["properties"].(map[string]interface{})
-		} else {
-			return "", fmt.Errorf("No '%s' document in mapping", documentType)
-		}
-	}
-	if propertyName != "" {
-		if doc, ok := body[propertyName]; ok {
-			body = doc.(map[string]interface{})
-		} else {
-			return "", fmt.Errorf("No '%s' property in document '%s'", propertyName, documentType)
-		}
-	}
-
-	data, err := json.MarshalIndent(body, "", "  ")
-	if err == nil {
-		return string(data), nil
-	}
-	return "", err
-
-}
-
-func (sni ShortNodeInfo) String() string {
-	return fmt.Sprintf("%s @ %s [%s]", sni.Name, sni.Host, sni.IP)
-}
-
-func (sii ShortIndexInfo) String() string {
-	return fmt.Sprintf("%s [docs: %d, bytes: %d, aliases:%v]", sii.Name, sii.DocumentCount, sii.Size, sii.Aliases)
-}
-
-func (sai ShortAliasInfo) String() string {
-	var buffer bytes.Buffer
-	buffer.WriteString(sai.Name)
-	if sai.Filtered {
-		buffer.WriteString("*")
-	}
-	return buffer.String()
-}
-
-func (h ClusterHealth) String() string {
-	y, err := yaml.Marshal(h)
-	if err != nil {
-		return "Error"
-	}
-	return string(y)
-	// 	return fmt.Sprintf(`Cluster:               %8s
-	// Status:                %8s
-	// Nodes:                     %4d
-	// Data nodes:                %4d
-	// Active Shards:             %4d
-	// Active Primary Shards:     %4d
-	// Unassigned Shards:         %4d
-	// Delayed Unassigned Shards: %4d
-	// Initializing Shards:       %4d
-	// Relocating Shards:         %4d
-	// Pending Tasks:             %4d
-	// In Flight Fetches:         %4d`,
-	// 		h.ClusterName, h.Status, h.NodeCount, h.DataNodeCount, h.ActiveShards, h.ActivePrimaryShards, h.UnassignedShards, h.DelayedUnassignedShards, h.InitializingShards, h.RelocatingShards, h.PendingTasks, h.InFlightFetch)
 }
 
 func (e Es) get(path string) (*http.Response, error) {
