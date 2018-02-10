@@ -25,10 +25,7 @@ type ShortAliasInfo struct {
 }
 
 // IndexSettings contains index settings (surprise!)
-type IndexSettings struct {
-	NumberOfShards   int
-	NumberOfReplicas int
-}
+type IndexSettings map[string]interface{}
 
 // ShardInfo contains information about the shard
 type ShardInfo struct {
@@ -179,6 +176,7 @@ func (e Es) IndexViewSettings(indexName string) (*IndexSettings, error) {
 		return nil, err
 	}
 
+	// return settings, nil
 	err = checkError(body)
 	if err != nil {
 		return nil, fmt.Errorf("Index %s failed: %s", indexName, err.Error())
@@ -186,22 +184,10 @@ func (e Es) IndexViewSettings(indexName string) (*IndexSettings, error) {
 
 	indexName = e.resolveAlias(indexName)
 
-	settings := body[indexName].(map[string]interface{})["settings"].(map[string]interface{})["index"].(map[string]interface{})
+	settings := &IndexSettings{}
+	err = utils.DictToAny(body[indexName].(map[string]interface{})["settings"].(map[string]interface{})["index"].(map[string]interface{}), settings)
 
-	noReplicas, err := strconv.Atoi(settings["number_of_replicas"].(string))
-	if err != nil {
-		return nil, err
-	}
-
-	noShards, err := strconv.Atoi(settings["number_of_shards"].(string))
-	if err != nil {
-		return nil, err
-	}
-
-	return &IndexSettings{
-		NumberOfReplicas: noReplicas,
-		NumberOfShards:   noShards,
-	}, nil
+	return settings, nil
 }
 
 // Flush flushes ES index
@@ -296,8 +282,6 @@ func checkError(body map[string]interface{}) error {
 
 func (e Es) buildAliasCache() (map[string]string, error) {
 	body, err := e.getJSON("/_alias")
-
-	fmt.Println(body)
 
 	if err != nil {
 		return nil, err

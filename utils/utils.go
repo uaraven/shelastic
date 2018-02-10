@@ -7,7 +7,7 @@ import (
 )
 
 // MapToYaml converts JSON representeda as map[string]interface{} to yaml string
-func MapToYaml(inp map[string]interface{}) (string, error) {
+func MapToYaml(inp interface{}) (string, error) {
 	text, err := yaml.Marshal(inp)
 
 	if err != nil {
@@ -41,4 +41,14 @@ func GetAsBool(inp map[string]interface{}, name string, orElse ...bool) bool {
 		return false
 	}
 	return value
+}
+
+// DictToAny converts map[string]interface{} to any other interface
+// This is naive implemenation which uses yaml as a convertation medium
+func DictToAny(inp map[string]interface{}, receiver interface{}) error {
+	data, err := MapToYaml(inp)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal([]byte(data), receiver)
 }

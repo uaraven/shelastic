@@ -61,3 +61,22 @@ func (e Es) getJSON(path string) (map[string]interface{}, error) {
 	}
 	return body, err
 }
+
+func (e Es) getJSONInto(path string, container interface{}) error {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	resp, err := e.client.Get(reqURL.String())
+	if err != nil {
+		return err
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(bodyBytes, &container)
+}

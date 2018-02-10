@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	// Version of shelastic
 	Version = "0.1"
 )
 

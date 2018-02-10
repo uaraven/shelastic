@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"shelastic/es"
+	"shelastic/utils"
 
 	ishell "gopkg.in/abiosoft/ishell.v2"
 )
@@ -107,8 +108,15 @@ func viewIndexSettings(c *ishell.Context) {
 		result, err := context.IndexViewSettings(indexName)
 		if err != nil {
 			errorMsg(c, err.Error())
+		} else {
+
+			text, err := utils.MapToYaml(result)
+			if err != nil {
+				errorMsg(c, err.Error())
+			} else {
+				cprintln(c, text)
+			}
 		}
-		cprintln(c, "Number of shards: %d\nNumber of replicas: %d", result.NumberOfShards, result.NumberOfReplicas)
 
 	} else {
 		errorMsg(c, errNotConnected)
