@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"shelastic/es"
 	"shelastic/utils"
 	"strings"
@@ -227,20 +228,25 @@ func configureIndex(c *ishell.Context) {
 		if len(c.Args) < 3 {
 			payload = make(map[string]string)
 			cprintln(c, "Enter configuration parameters, one per line finish with empty line")
-			c.SetPrompt("? > ")
+			c.SetPrompt(">>> ")
 			lines := strings.Split(c.ReadMultiLinesFunc(func(ln string) bool {
 				return len(ln) != 0
 			}), "\n")
 			for _, ln := range lines {
 				ln = strings.TrimSpace(ln)
 				kv := strings.Split(ln, ":")
+				fmt.Println("pair:", kv)
 				if len(kv) == 2 {
-					payload[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+					payload[strings.TrimSpace(kv[0])] = kv[1]
 				}
 			}
 			c.SetPrompt(context.ClusterName + " $> ")
 		} else {
-			payload = map[string]string{c.Args[1]: c.Args[2]}
+			v := c.Args[2]
+			if v[0] == '(' && v[len(v)-1] == ')' {
+				v = "\"" + v[1:len(v)-1] + "\""
+			}
+			payload = map[string]string{c.Args[1]: v}
 		}
 		err := context.IndexConfigure(indexName, payload)
 		if err != nil {

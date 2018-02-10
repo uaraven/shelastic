@@ -12,6 +12,7 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 | `disconnect`                      | Disconnects from ES cluster. You need to disconnect before connecting to another cluster       |
 | `list indices`                    | Lists indices on the cluster |
 | `list nodes`                      | Lists nodes of the cluster. Each node is displayed in format `<name> @ <hostname> [<ip-address>]` |
+| `_debug`                          | Toggle HTTP output. Use for bug reporting purposes |
 
 ### Index commads
 
@@ -88,9 +89,14 @@ using `index configure` command.
 
         > index configure index-name
         Enter configuration parameters, one per line, finish with ;
-        index.routing.allocation.require._name: host1
-        index.routing.allocation.require._ip:  host2;
+        index.routing.allocation.require._name: "host1"
+        index.routing.allocation.require._ip:  "host2";
         
 2. Enter configuration on a command line. Everything after index name will be interpreted as configuration in YAML syntax.
 
-        > index configure index-name index.routing.allocation.require._name host1
+        > index configure index-name index.routing.allocation.require._name (host1)
+   
+   _Warning_: May change in future version.
+
+    As commands are interpreted using shell rules, quotes and double quotes will be used to enclose multi-word parameters. Use parenthesis to pass string parameters. Parenthesis will be replaced with quotes in REST call.
+    
