@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"strconv"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -13,4 +15,30 @@ func MapToYaml(inp map[string]interface{}) (string, error) {
 	}
 
 	return string(text), nil
+}
+
+// GetAsInt reads value from map "inp" by key "name" and tries to convert it to int
+// If conversion fails and "orElse" is passed, then orElse[0] is returned, otherwise 0 is returned
+func GetAsInt(inp map[string]interface{}, name string, orElse ...int) int {
+	value, err := strconv.Atoi(inp[name].(string))
+	if err != nil {
+		if len(orElse) > 0 {
+			return orElse[0]
+		}
+		return 0
+	}
+	return value
+}
+
+// GetAsBool reads value from map "inp" by key "name" and tries to convert it to bool
+// If conversion fails and "orElse" is passed, then orElse[0] is returned, otherwise false is returned
+func GetAsBool(inp map[string]interface{}, name string, orElse ...bool) bool {
+	value, err := strconv.ParseBool(inp[name].(string))
+	if err != nil {
+		if len(orElse) > 0 {
+			return orElse[0]
+		}
+		return false
+	}
+	return value
 }

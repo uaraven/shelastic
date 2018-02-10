@@ -24,6 +24,7 @@ type Es struct {
 	ClusterName string
 	version     []int
 	aliases     map[string]string
+	nodes       map[string]*ShortNodeInfo
 }
 
 // Connect initiates connection to an Elasticsearch cluster node specified by host argument
@@ -69,8 +70,16 @@ func Connect(host string) (*Es, *PingResponse, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Println(aliases)
 	es.aliases = aliases
+
+	nodes, err := es.ListNodes()
+	if err != nil {
+		return nil, nil, err
+	}
+	es.nodes = make(map[string]*ShortNodeInfo)
+	for _, node := range nodes {
+		es.nodes[node.UUID] = node
+	}
 
 	return &es, ping, err
 }

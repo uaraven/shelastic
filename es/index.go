@@ -30,6 +30,23 @@ type IndexSettings struct {
 	NumberOfReplicas int
 }
 
+// ShardInfo contains information about the shard
+type ShardInfo struct {
+	State            string
+	Primary          bool
+	Node             *ShortNodeInfo
+	CommitedSegments int
+	SearchSegments   int
+}
+
+// IndexShard is information about index shard.
+// ID is number of shard
+// Shards contains information on actual shards allocated to nodes
+type IndexShard struct {
+	ID     int
+	Shards []*ShardInfo
+}
+
 // ListIndices returns slice of *ShortIndexInfo containing names of indices
 func (e Es) ListIndices() ([]*ShortIndexInfo, error) {
 	body, err := e.getJSON("/_stats")
@@ -63,26 +80,6 @@ func (e Es) ListIndices() ([]*ShortIndexInfo, error) {
 
 		result[i] = sii
 		i++
-	}
-	return result, nil
-}
-
-func (e Es) buildAliasCache() (map[string]string, error) {
-	body, err := e.getJSON("/_alias")
-
-	fmt.Println(body)
-
-	if err != nil {
-		return nil, err
-	}
-	var result = make(map[string]string)
-	for index := range body {
-		aliases := body[index].(map[string]interface{})["aliases"].(map[string]interface{})
-		if len(aliases) > 0 {
-			for a := range aliases {
-				result[a] = index
-			}
-		}
 	}
 	return result, nil
 }
@@ -139,10 +136,9 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 		return "", err
 	}
 
-	if doc, ok := body["error"]; ok {
-		body = doc.(map[string]interface{})
-		reason := body["reason"].(string)
-		return "", fmt.Errorf("Index %s failed: %s", indexName, reason)
+	err = checkError(body)
+	if err != nil {
+		return "", fmt.Errorf("Index %s failed: %s", indexName, err.Error())
 	}
 
 	indexName = e.resolveAlias(indexName)
@@ -182,10 +178,10 @@ func (e Es) IndexViewSettings(indexName string) (*IndexSettings, error) {
 	if err != nil {
 		return nil, err
 	}
-	if doc, ok := body["error"]; ok {
-		body = doc.(map[string]interface{})
-		reason := body["reason"].(string)
-		return nil, fmt.Errorf("Index %s failed: %s", indexName, reason)
+
+	err = checkError(body)
+	if err != nil {
+		return nil, fmt.Errorf("Index %s failed: %s", indexName, err.Error())
 	}
 
 	indexName = e.resolveAlias(indexName)
@@ -220,6 +216,62 @@ func (e Es) Flush(indexName string, force bool, wait bool) error {
 	return err
 }
 
+//IndexShards returns list of shards allocated for a given index
+func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
+	body, err := e.getJSON(fmt.Sprintf("/%s/_segments", indexName))
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(body)
+	if err != nil {
+		return nil, fmt.Errorf("Index %s failed: %s", indexName, err.Error())
+	}
+
+	indexName = e.resolveAlias(indexName)
+
+	shards := body["indices"].(map[string]interface{})[indexName].(map[string]interface{})["shards"].(map[string]interface{})
+
+	var result []*IndexShard
+	for shardIdx := range shards {
+		shard := shards[shardIdx].([]interface{})
+		var shardInfos = make([]*ShardInfo, len(shard))
+		for idx, subShardM := range shard {
+			subShard := subShardM.(map[string]interface{})
+			routing := subShard["routing"].(map[string]interface{})
+
+			state := routing["state"].(string)
+			primary := routing["primary"].(bool)
+			nodeID := routing["node"].(string)
+
+			node, ok := e.nodes[nodeID]
+			if !ok {
+				return nil, fmt.Errorf("Failed to parse response: Unknown node %s", node)
+			}
+
+			commitedSegments := int(subShard["num_committed_segments"].(float64))
+			searchSegments := int(subShard["num_search_segments"].(float64))
+
+			shardInfo := &ShardInfo{
+				State:            state,
+				Primary:          primary,
+				Node:             node,
+				CommitedSegments: commitedSegments,
+				SearchSegments:   searchSegments,
+			}
+			shardInfos[idx] = shardInfo
+		}
+		id, _ := strconv.Atoi(shardIdx)
+		indexShard := &IndexShard{
+			ID:     id,
+			Shards: shardInfos,
+		}
+		result = append(result, indexShard)
+	}
+	return result, nil
+}
+
 func (sii ShortIndexInfo) String() string {
 	return fmt.Sprintf("%s [docs: %d, bytes: %d, aliases:%v]", sii.Name, sii.DocumentCount, sii.Size, sii.Aliases)
 }
@@ -231,6 +283,35 @@ func (sai ShortAliasInfo) String() string {
 		buffer.WriteString("*")
 	}
 	return buffer.String()
+}
+
+func checkError(body map[string]interface{}) error {
+	if doc, ok := body["error"]; ok {
+		body = doc.(map[string]interface{})
+		reason := body["reason"].(string)
+		return fmt.Errorf(reason)
+	}
+	return nil
+}
+
+func (e Es) buildAliasCache() (map[string]string, error) {
+	body, err := e.getJSON("/_alias")
+
+	fmt.Println(body)
+
+	if err != nil {
+		return nil, err
+	}
+	var result = make(map[string]string)
+	for index := range body {
+		aliases := body[index].(map[string]interface{})["aliases"].(map[string]interface{})
+		if len(aliases) > 0 {
+			for a := range aliases {
+				result[a] = index
+			}
+		}
+	}
+	return result, nil
 }
 
 func (e Es) resolveAlias(indexName string) string {

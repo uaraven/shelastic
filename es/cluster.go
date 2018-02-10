@@ -37,9 +37,11 @@ type ClusterHealth struct {
 
 // ShortNodeInfo holds minimal node information
 type ShortNodeInfo struct {
-	Name string
-	Host string
-	IP   string
+	UUID             string
+	Name             string
+	Host             string
+	IP               string
+	TransportAddress string
 }
 
 // ListNodes returns slice of *ShortNodeInfo structs containing node information
@@ -58,9 +60,11 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 		nodeInfo := nodes[node].(map[string]interface{})
 
 		sni := &ShortNodeInfo{
-			Name: nodeInfo["name"].(string),
-			Host: nodeInfo["host"].(string),
-			IP:   nodeInfo["ip"].(string),
+			UUID:             node,
+			Name:             nodeInfo["name"].(string),
+			TransportAddress: nodeInfo["transport_address"].(string),
+			Host:             nodeInfo["host"].(string),
+			IP:               nodeInfo["ip"].(string),
 		}
 		result[idx] = sni
 		idx++

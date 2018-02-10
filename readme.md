@@ -21,6 +21,7 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 | `index flush [<index-name>]` | Flushes index. If no `<index-name>` given, flushesh all indices. Supported options: `force` - forces flush even if it is not needed; `wait` - waits for other ongoing flush operation to complete |
 | `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property|
 | `index view settings <index-name>` | View index settings|
+| `index view shards <index-name>` | View index shards|
 
 ## Supported operations
 
@@ -33,10 +34,11 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
     - [ ] Optimize
     - [ ] Refresh
 - Index metadata operations:
-    - [ ] View settings
+    - [x] View settings
     - [ ] Change settings
     - [x] View mappings
     - [ ] View routing
+    - [x] View shards allocation
     - [ ] Change routing
     - [ ] View statistics
 - Index operations:
