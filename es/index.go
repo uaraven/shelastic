@@ -2,10 +2,10 @@ package es
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"shelastic/utils"
 	"strconv"
+	"strings"
 )
 
 // ShortIndexInfo contains basic index information
@@ -26,6 +26,9 @@ type ShortAliasInfo struct {
 
 // IndexSettings contains index settings (surprise!)
 type IndexSettings map[string]interface{}
+
+// IndexMappings contains index mappings
+type IndexMappings map[string]interface{}
 
 // ShardInfo contains information about the shard
 type ShardInfo struct {
@@ -126,16 +129,16 @@ func getAnyKey(m map[string]interface{}) string {
 }
 
 // IndexViewMapping returns string containing JSON of mapping information
-func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (string, error) {
+func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (*IndexMappings, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	err = checkError(body)
 	if err != nil {
-		return "", fmt.Errorf("Index %s failed: %s", indexName, err.Error())
+		return nil, fmt.Errorf("Index %s failed: %s", indexName, err.Error())
 	}
 
 	indexName = e.resolveAlias(indexName)
@@ -150,22 +153,22 @@ func (e Es) IndexViewMapping(indexName string, documentType string, propertyName
 		if doc, ok := body[documentType]; ok {
 			body = doc.(map[string]interface{})["properties"].(map[string]interface{})
 		} else {
-			return "", fmt.Errorf("No '%s' document in mapping", documentType)
+			return nil, fmt.Errorf("No '%s' document in mapping", documentType)
 		}
 	}
 	if propertyName != "" {
 		if doc, ok := body[propertyName]; ok {
 			body = doc.(map[string]interface{})
 		} else {
-			return "", fmt.Errorf("No '%s' property in document '%s'", propertyName, documentType)
+			return nil, fmt.Errorf("No '%s' property in document '%s'", propertyName, documentType)
 		}
 	}
-
-	data, err := json.MarshalIndent(body, "", "  ")
-	if err == nil {
-		return string(data), nil
+	mappings := &IndexMappings{}
+	err = utils.DictToAny(body, mappings)
+	if err != nil {
+		return nil, err
 	}
-	return "", err
+	return mappings, nil
 }
 
 // IndexViewSettings retrieves index settings
@@ -256,6 +259,32 @@ func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
 		result = append(result, indexShard)
 	}
 	return result, nil
+}
+
+// IndexConfigure updates configuration for a given index. Configuration must be provided in YAML format
+func (e Es) IndexConfigure(indexName string, params map[string]string) error {
+	if len(params) == 0 {
+		return fmt.Errorf("No settings to update")
+	}
+
+	var kv = make([]string, len(params))
+	var idx = 0
+	for key := range params {
+		kv[idx] = "\"" + key + "\": " + params[key]
+		idx++
+	}
+	var payload bytes.Buffer
+	payload.WriteString("{\n")
+	payload.WriteString(strings.Join(kv, ",\n"))
+	payload.WriteString("\n}")
+
+	resp, err := e.putJson(fmt.Sprintf("/%s/_settings", indexName), payload.String())
+
+	err = checkError(resp)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (sii ShortIndexInfo) String() string {

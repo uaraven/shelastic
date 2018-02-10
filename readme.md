@@ -19,9 +19,10 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 |:---------------------------------:|:-----------------------------------------------------------------------------------------------|
 | `index clear-cache [<index-name>]`| Clears cache of given index. If no `<index-name>` is specified then cache for all indices is cleared|
 | `index flush [<index-name>]` | Flushes index. If no `<index-name>` given, flushesh all indices. Supported options: `force` - forces flush even if it is not needed; `wait` - waits for other ongoing flush operation to complete |
-| `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property|
+| `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability|
 | `index view settings <index-name>` | View index settings|
-| `index view shards <index-name>` | View index shards|
+| `index view shards <index-name> [by-node|by-shard]` | View index shards|
+| `index configure <yaml-config>` | Set index setting. See below for syntax |
 
 ## Supported operations
 
@@ -37,7 +38,7 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
     - [x] View settings
     - [ ] Change settings
     - [x] View mappings
-    - [ ] View routing
+    - [x] View routing - as part of settings
     - [x] View shards allocation
     - [ ] Change routing
     - [ ] View statistics
@@ -57,3 +58,39 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 - Cluster operations
     - Routing:
         - [ ] Decomission a node
+
+## Changing index settings
+
+To change index setting one can use yaml syntax. 
+
+Let's take a look at changing  allocation routing for the index.
+
+Using REST APIs it can be done with following request:
+
+        PUT http://localhost:9200/index-name/_settings
+
+        {
+        "settings": {
+                "index": {
+                    "routing": {
+                        "allocation" : {
+                            "require._name": "host1"
+                        }        
+                    }
+                }
+            }
+        }
+        
+To change the same setting using shelastic there are several syntax options. They are all implemented
+using `index configure` command.
+
+1. Interactive input. When no configuration key is specified on command line then `index configure` command will switch to multiline editor. Enter index configuration line by line, finish with semicolon. Each line of configuration consists of configuration key and value separated by colon
+
+        > index configure index-name
+        Enter configuration parameters, one per line, finish with ;
+        index.routing.allocation.require._name: host1
+        index.routing.allocation.require._ip:  host2;
+        
+2. Enter configuration on a command line. Everything after index name will be interpreted as configuration in YAML syntax.
+
+        > index configure index-name index.routing.allocation.require._name host1

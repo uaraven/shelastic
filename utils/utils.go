@@ -1,12 +1,13 @@
 package utils
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"gopkg.in/yaml.v2"
 )
 
-// MapToYaml converts JSON representeda as map[string]interface{} to yaml string
+// MapToYaml converts JSON represented as a map[string]interface{} to yaml string
 func MapToYaml(inp interface{}) (string, error) {
 	text, err := yaml.Marshal(inp)
 
@@ -15,6 +16,24 @@ func MapToYaml(inp interface{}) (string, error) {
 	}
 
 	return string(text), nil
+}
+
+// YamlStrToJSON converts stringin YAML format to JSON
+func YamlStrToJSON(yamls string) (string, error) {
+	var holder map[string]interface{}
+
+	err := yaml.Unmarshal([]byte(yamls), holder)
+
+	if err != nil {
+		return "", err
+	}
+
+	jsonb, err := json.Marshal(holder)
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonb), nil
 }
 
 // GetAsInt reads value from map "inp" by key "name" and tries to convert it to int

@@ -11,12 +11,14 @@ import (
 var (
 	context *es.Es
 
+	// Commands contain list of available top-level shell commands
 	Commands = []*ishell.Cmd{
 		Connect(),
 		Disconnect(),
 		Health(),
 		List(),
 		Index(),
+		Debug(),
 	}
 
 	cl  = color.New(color.FgBlue).SprintfFunc()
@@ -27,6 +29,7 @@ const (
 	errNotConnected = "Not connected to Elasticsearch cluster"
 )
 
+// Connect performs connection to Elasticsearh cluster
 func Connect() *ishell.Cmd {
 	return &ishell.Cmd{
 		Name: "connect",
@@ -56,6 +59,7 @@ func Connect() *ishell.Cmd {
 	}
 }
 
+// Disconnect disconnects from Elasticsearch cluster
 func Disconnect() *ishell.Cmd {
 	return &ishell.Cmd{
 		Name: "disconnect",
@@ -68,6 +72,7 @@ func Disconnect() *ishell.Cmd {
 	}
 }
 
+// Health retrieves cluster health status
 func Health() *ishell.Cmd {
 	return &ishell.Cmd{
 		Name: "health",
@@ -87,6 +92,7 @@ func Health() *ishell.Cmd {
 	}
 }
 
+// List retrieves node and indices
 func List() *ishell.Cmd {
 	list := &ishell.Cmd{
 		Name: "list",
@@ -133,8 +139,32 @@ func List() *ishell.Cmd {
 	return list
 }
 
+// Debug command toggle debug mode on and off
+func Debug() *ishell.Cmd {
+	return &ishell.Cmd{
+		Name: "_debug",
+		Help: "Toggle debug mode. Requests sent to ES cluster as well as responses are printed on the screen",
+		Func: func(c *ishell.Context) {
+			if context == nil {
+				errorMsg(c, errNotConnected)
+			} else {
+				context.Debug = !context.Debug
+				if context.Debug {
+					cprintln(c, "Debug on")
+				} else {
+					cprintln(c, "Debug off")
+				}
+			}
+		},
+	}
+}
+
 func cprintln(c *ishell.Context, format string, params ...interface{}) {
 	c.Println(cl(format, params...))
+}
+
+func cprintf(c *ishell.Context, format string, params ...interface{}) {
+	c.Printf(cl(format, params...))
 }
 
 func errorMsg(c *ishell.Context, message string, params ...interface{}) {

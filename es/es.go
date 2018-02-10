@@ -25,6 +25,7 @@ type Es struct {
 	version     []int
 	aliases     map[string]string
 	nodes       map[string]*ShortNodeInfo
+	Debug       bool
 }
 
 // Connect initiates connection to an Elasticsearch cluster node specified by host argument

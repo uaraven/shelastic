@@ -3,10 +3,12 @@ package cmd
 import (
 	"shelastic/es"
 	"shelastic/utils"
+	"strings"
 
 	ishell "gopkg.in/abiosoft/ishell.v2"
 )
 
+// Index wraps all index functions
 func Index() *ishell.Cmd {
 	index := &ishell.Cmd{
 		Name: "index",
@@ -41,6 +43,12 @@ func Index() *ishell.Cmd {
 		Name: "flush",
 		Help: "Flushes index data to storage and clears transaction log",
 		Func: flush,
+	})
+
+	index.AddCmd(&ishell.Cmd{
+		Name: "configure",
+		Help: "Set index' setting",
+		Func: configureIndex,
 	})
 
 	return index
@@ -88,8 +96,14 @@ func viewIndexMapping(c *ishell.Context) {
 		result, err := context.IndexViewMapping(indexName, docType, property)
 		if err != nil {
 			errorMsg(c, err.Error())
+			return
 		}
-		cprintln(c, result)
+		mappings, err := utils.MapToYaml(result)
+		if err != nil {
+			errorMsg(c, err.Error())
+		} else {
+			cprintln(c, mappings)
+		}
 
 	} else {
 		errorMsg(c, errNotConnected)
@@ -132,11 +146,22 @@ func viewIndexShards(c *ishell.Context) {
 		}
 		indexName := c.Args[0]
 
+		var mode string
+		if len(c.Args) > 1 && strings.ToLower(c.Args[1]) == "by-shard" {
+			mode = "shard"
+		} else {
+			mode = "node"
+		}
+
 		result, err := context.IndexShards(indexName)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
-			printIndexShardsByNode(c, result)
+			if mode == "node" {
+				printIndexShardsByNode(c, result)
+			} else {
+				printIndexShardsByShard(c, result)
+			}
 		}
 
 	} else {
@@ -170,5 +195,61 @@ func printIndexShardsByNode(c *ishell.Context, indexShards []*es.IndexShard) {
 			}
 			cprintln(c, "   %d: %s, %s", idx, shard.State, prim)
 		}
+	}
+}
+
+func printIndexShardsByShard(c *ishell.Context, indexShards []*es.IndexShard) {
+	for _, indexShard := range indexShards {
+		cprintln(c, "Shard %d:", indexShard.ID)
+		for shardIdx, shardInfo := range indexShard.Shards {
+
+			var prim string
+			if shardInfo.Primary {
+				prim = "Primary"
+			} else {
+				prim = "Replica"
+			}
+
+			cprintln(c, "   %d: %s - %s - %s", shardIdx, prim, shardInfo.State, shardInfo.Node.String())
+		}
+	}
+}
+
+func configureIndex(c *ishell.Context) {
+	if context != nil {
+		if len(c.Args) < 1 {
+			errorMsg(c, "Index name not specified")
+			return
+		}
+		indexName := c.Args[0]
+
+		var payload map[string]string
+		if len(c.Args) < 3 {
+			payload = make(map[string]string)
+			cprintln(c, "Enter configuration parameters, one per line finish with empty line")
+			c.SetPrompt("? > ")
+			lines := strings.Split(c.ReadMultiLinesFunc(func(ln string) bool {
+				return len(ln) != 0
+			}), "\n")
+			for _, ln := range lines {
+				ln = strings.TrimSpace(ln)
+				kv := strings.Split(ln, ":")
+				if len(kv) == 2 {
+					payload[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+				}
+			}
+			c.SetPrompt(context.ClusterName + " $> ")
+		} else {
+			payload = map[string]string{c.Args[1]: c.Args[2]}
+		}
+		err := context.IndexConfigure(indexName, payload)
+		if err != nil {
+			errorMsg(c, err.Error())
+		} else {
+			cprintln(c, "Ok")
+		}
+
+	} else {
+		errorMsg(c, errNotConnected)
 	}
 }
