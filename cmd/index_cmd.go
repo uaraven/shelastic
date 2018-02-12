@@ -46,6 +46,27 @@ func Index() *ishell.Cmd {
 		Func: flush,
 	})
 
+	index.AddCmd(view)
+	index.AddCmd(&ishell.Cmd{
+		Name: "clear-cache",
+		Help: "Clears index cache",
+		Func: clearCache,
+	})
+
+	index.AddCmd(view)
+	index.AddCmd(&ishell.Cmd{
+		Name: "refresh",
+		Help: "Refreshes index, making all operations performed since last refresh available for search",
+		Func: refresh,
+	})
+
+	index.AddCmd(view)
+	index.AddCmd(&ishell.Cmd{
+		Name: "force-merge",
+		Help: "Allows to force merging of one or more indices through an API.",
+		Func: forceMerge,
+	})
+
 	index.AddCmd(&ishell.Cmd{
 		Name: "configure",
 		Help: "Set index' setting",
@@ -64,6 +85,63 @@ func flush(c *ishell.Context) {
 			index = c.Args[0]
 		}
 		err := context.Flush(index, false, false)
+		if err != nil {
+			errorMsg(c, err.Error())
+		} else {
+			cprintln(c, "Ok")
+		}
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
+func clearCache(c *ishell.Context) {
+	if context != nil {
+		var index string
+		if len(c.Args) == 0 {
+			index = ""
+		} else {
+			index = c.Args[0]
+		}
+		err := context.ClearCache(index)
+		if err != nil {
+			errorMsg(c, err.Error())
+		} else {
+			cprintln(c, "Ok")
+		}
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
+func refresh(c *ishell.Context) {
+	if context != nil {
+		var index string
+		if len(c.Args) == 0 {
+			index = ""
+		} else {
+			index = c.Args[0]
+		}
+		err := context.Refresh(index)
+		if err != nil {
+			errorMsg(c, err.Error())
+		} else {
+			cprintln(c, "Ok")
+		}
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
+func forceMerge(c *ishell.Context) {
+	if context != nil {
+		var index string
+		if len(c.Args) == 0 {
+			index = ""
+		} else {
+			index = c.Args[0]
+		}
+		err := context.ForceMerge(index)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {

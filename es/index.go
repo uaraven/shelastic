@@ -205,6 +205,49 @@ func (e Es) Flush(indexName string, force bool, wait bool) error {
 	return err
 }
 
+// ClearCache clears index's cache
+func (e Es) ClearCache(indexName string) error {
+	var path string
+	if indexName != "" {
+		path = fmt.Sprintf("/%s/_cache/clear", indexName)
+	} else {
+		path = "/_cache/clear"
+	}
+	_, err := e.post(path, "")
+	return err
+}
+
+// Refresh refreshes index, making all operations performed since last refresh available for search
+func (e Es) Refresh(indexName string) error {
+	var path string
+	if indexName != "" {
+		path = fmt.Sprintf("/%s/_refresh", indexName)
+	} else {
+		path = "/_refresh"
+	}
+	_, err := e.post(path, "")
+	return err
+}
+
+// ForceMerge allows to force merging of one or more indices through an API.
+// For ES version 1.x and 2.x this calls _optimize API
+func (e Es) ForceMerge(indexName string) error {
+	var apiName string
+	if e.version[0] < 5 {
+		apiName = "_optimize"
+	} else {
+		apiName = "_forcemerge"
+	}
+	var path string
+	if indexName != "" {
+		path = fmt.Sprintf("/%s/%s", indexName, apiName)
+	} else {
+		path = "/" + apiName
+	}
+	_, err := e.post(path, "")
+	return err
+}
+
 //IndexShards returns list of shards allocated for a given index
 func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_segments", indexName))

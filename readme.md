@@ -17,9 +17,12 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 ### Index commads
 
 | Command                           | Description                                                                                    |
-|:---------------------------------:|:-----------------------------------------------------------------------------------------------|
+|:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `index clear-cache [<index-name>]`| Clears cache of given index. If no `<index-name>` is specified then cache for all indices is cleared|
 | `index flush [<index-name>]` | Flushes index. If no `<index-name>` given, flushesh all indices. Supported options: `force` - forces flush even if it is not needed; `wait` - waits for other ongoing flush operation to complete |
+| `index clear-cache [<index-name>]` | Clear index cache. If `<index-name>` is omitted, cache is cleared for all indices |
+| `index refresh [<index-name>]` | Refreshes index, making all operations performed since last refresh available for search.|
+| `index force-merge [<index-name>]` | Forces merging of one or more indices through an API. For ES version 1.x and 2.x this calls _Optimize_ API |
 | `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability|
 | `index view settings <index-name>` | View index settings|
 | `index view shards <index-name> [by-node|by-shard]` | View index shards|
@@ -31,13 +34,13 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
     - [x] List index name
     - [x] List basic node information - name, ip, hostname
 - Index administration:
-    - [ ] Clear cache
+    - [x] Clear cache
     - [x] Flush
-    - [ ] Optimize
-    - [ ] Refresh
+    - [x] Refresh
+    - [x] Force merge/Optimize
 - Index metadata operations:
     - [x] View settings
-    - [ ] Change settings
+    - [x] Change settings
     - [x] View mappings
     - [x] View routing - as part of settings
     - [x] View shards allocation
@@ -99,4 +102,22 @@ using `index configure` command.
    _Warning_: May change in future version.
 
     As commands are interpreted using shell rules, quotes and double quotes will be used to enclose multi-word parameters. Use parenthesis to pass string parameters. Parenthesis will be replaced with quotes in REST call.
+    
+
+### Specific use cases
+
+*Disable all hosts but one*
+
+Steps to execute
+
+  - change number of replicas for index to 0
+
+  - Move all shards to one node
+
+        PUT /<index>/_settings
+        {
+        "settings": {
+            "index.routing.allocation.require._name": "enabled_node", 
+            }
+        }
     
