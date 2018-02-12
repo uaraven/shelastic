@@ -18,6 +18,7 @@ var (
 		Health(),
 		List(),
 		Index(),
+		Snapshot(),
 		Debug(),
 	}
 

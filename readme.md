@@ -28,6 +28,19 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 | `index view shards <index-name> [by-node|by-shard]` | View index shards|
 | `index configure <yaml-config>` | Set index setting. See below for syntax |
 
+### Snapshot commands
+
+| Command                           | Description                                                                                    |
+|:----------------------------------|:-----------------------------------------------------------------------------------------------|
+| `snapshot repo list`              | Lists all configured snapshot repositories with their settings|
+| `snapshot repo register <name> <type> <settings>` | Registers new repository of type `<type>` and named `<name>`. Repository settings can be
+passed as key-value pairs on command line. Each key and value must be separated by space|
+| `snapshot repo verify <name>`     | Verifies repository |
+| `snapshot create <repo> <name>`   | Creates snapshot named `<name>` in repository `<repo>` |
+| `snapshot info <repo> [<name>]`   | Retrieves snapshot information from repository `<repo>`. If snapshot `<name>` is specified then its information is retrieved, otherwise information for all snapshots in the repository is printed|
+| `snapshot restore <repo> <name>`  | Restores snapshot named `<name>` from repository `<repo>` |
+| `snapshot delete <repo> <name>`   | Deletes snapshot named `<name>` from repository `<repo>` |
+
 ## Supported operations
 
 - Basic operations:
@@ -50,6 +63,13 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
     - [ ] Insert/Update document
     - [ ] Delete document
     - [ ] View document by id
+- Snapshots
+    - [x] Create repository
+    - [x] List repositories
+    - [x] Create snapshot
+    - [x] View snapshot information
+    - [x] Delete snapshot
+    - [x] Restore snapshot
 - Query operations:
     - [ ] JSON requests
     - [ ] SQL like?
@@ -65,7 +85,7 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 
 ## Changing index settings
 
-To change index setting one can use yaml syntax. 
+To change index setting one can use yaml syntax.
 
 Let's take a look at changing  allocation routing for the index.
 
@@ -79,12 +99,12 @@ Using REST APIs it can be done with following request:
                     "routing": {
                         "allocation" : {
                             "require._name": "host1"
-                        }        
+                        }
                     }
                 }
             }
         }
-        
+
 To change the same setting using shelastic there are several syntax options. They are all implemented
 using `index configure` command.
 
@@ -94,30 +114,28 @@ using `index configure` command.
         Enter configuration parameters, one per line, finish with ;
         index.routing.allocation.require._name: "host1"
         index.routing.allocation.require._ip:  "host2";
-        
+
 2. Enter configuration on a command line. Everything after index name will be interpreted as configuration in YAML syntax.
 
         > index configure index-name index.routing.allocation.require._name (host1)
-   
+
    _Warning_: May change in future version.
 
     As commands are interpreted using shell rules, quotes and double quotes will be used to enclose multi-word parameters. Use parenthesis to pass string parameters. Parenthesis will be replaced with quotes in REST call.
-    
 
 ### Specific use cases
 
-*Disable all hosts but one*
+Case: *Disable all hosts but one*
 
 Steps to execute
 
-  - change number of replicas for index to 0
+- change number of replicas for index to 0
 
-  - Move all shards to one node
+- Move all shards to one node
 
         PUT /<index>/_settings
         {
         "settings": {
-            "index.routing.allocation.require._name": "enabled_node", 
+            "index.routing.allocation.require._name": "enabled_node",
             }
         }
-    

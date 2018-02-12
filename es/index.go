@@ -345,8 +345,13 @@ func (sai ShortAliasInfo) String() string {
 
 func checkError(body map[string]interface{}) error {
 	if doc, ok := body["error"]; ok {
-		body = doc.(map[string]interface{})
-		reason := body["reason"].(string)
+		body, ok := doc.(map[string]interface{})
+		var reason string
+		if !ok {
+			reason = doc.(string)
+		} else {
+			reason = body["reason"].(string)
+		}
 		return fmt.Errorf(reason)
 	}
 	return nil

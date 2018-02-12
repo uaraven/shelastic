@@ -18,6 +18,17 @@ func MapToYaml(inp interface{}) (string, error) {
 	return string(text), nil
 }
 
+// MapToJSON converts JSON represented as a map[string]interface{} to JSON string
+func MapToJSON(inp interface{}) (string, error) {
+	text, err := json.Marshal(inp)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(text), nil
+}
+
 // YamlStrToJSON converts stringin YAML format to JSON
 func YamlStrToJSON(yamls string) (string, error) {
 	var holder map[string]interface{}

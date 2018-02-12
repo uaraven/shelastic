@@ -103,6 +103,48 @@ func (e Es) putJson(path string, data string) (map[string]interface{}, error) {
 	return body, err
 }
 
+func (e Es) postJSON(path string, data string) (map[string]interface{}, error) {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	var resp *http.Response
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), strings.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	cl := strconv.FormatInt(int64(len(data)), 10)
+	req.Header.Add("Content-Length", cl)
+	req.Header.Add("Content-Type", "application/json")
+
+	if e.Debug {
+		dumpRequest(req, data)
+	}
+
+	resp, err = e.client.Do(req)
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if e.Debug {
+		if err != nil {
+			fmt.Println("Response error: ", err.Error())
+		} else {
+			dumpResponse(resp, bodyBytes)
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var body map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		return nil, err
+	}
+	return body, err
+}
+
 func (e Es) getJSON(path string) (map[string]interface{}, error) {
 	pathURL, err := url.Parse(path)
 	if err != nil {
@@ -136,6 +178,28 @@ func (e Es) getJSON(path string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return body, err
+}
+
+func (e Es) delete(path string) error {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	if e.Debug {
+		fmt.Printf("Request: GET %s\n\n", reqURL.String())
+	}
+	req, err := http.NewRequest(http.MethodDelete, reqURL.String(), nil)
+	if err != nil {
+		return err
+	}
+	if e.Debug {
+		dumpRequest(req, "")
+	}
+
+	_, err = e.client.Do(req)
+
+	return err
 }
 
 func dumpRequest(req *http.Request, body string) {
