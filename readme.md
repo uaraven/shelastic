@@ -25,7 +25,7 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 | `index force-merge [<index-name>]` | Forces merging of one or more indices through an API. For ES version 1.x and 2.x this calls _Optimize_ API |
 | `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability|
 | `index view settings <index-name>` | View index settings|
-| `index view shards <index-name> [by-node|by-shard]` | View index shards|
+| `index view shards <index-name> [by-node\|by-shard]` | View index shards|
 | `index configure <yaml-config>` | Set index setting. See below for syntax |
 
 ### Snapshot commands
