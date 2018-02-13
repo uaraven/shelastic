@@ -19,6 +19,7 @@ var (
 		List(),
 		Index(),
 		Snapshot(),
+		Nodes(),
 		Debug(),
 	}
 

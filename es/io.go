@@ -61,7 +61,7 @@ func (e Es) post(path string, data string) (*http.Response, error) {
 	return resp, err
 }
 
-func (e Es) putJson(path string, data string) (map[string]interface{}, error) {
+func (e Es) putJSON(path string, data string) (map[string]interface{}, error) {
 	pathURL, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -143,6 +143,36 @@ func (e Es) postJSON(path string, data string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return body, err
+}
+
+func (e Es) getData(path string) ([]byte, error) {
+	pathURL, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := e.esURL.ResolveReference(pathURL)
+	if e.Debug {
+		fmt.Printf("Request: GET %s\n\n", reqURL.String())
+	}
+	resp, err := e.client.Get(reqURL.String())
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if e.Debug {
+		if err != nil {
+			fmt.Println("Response error: ", err.Error())
+		} else {
+			dumpResponse(resp, bodyBytes)
+		}
+	}
+
+	return bodyBytes, nil
 }
 
 func (e Es) getJSON(path string) (map[string]interface{}, error) {

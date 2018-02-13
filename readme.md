@@ -25,7 +25,7 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 | `index force-merge [<index-name>]` | Forces merging of one or more indices through an API. For ES version 1.x and 2.x this calls _Optimize_ API |
 | `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability|
 | `index view settings <index-name>` | View index settings|
-| `index view shards <index-name> [by-node\|by-shard]` | View index shards|
+| `index view shards <index-name> [by-node | by-shard]` | View index shards|
 | `index configure <yaml-config>` | Set index setting. See below for syntax |
 
 ### Snapshot commands
@@ -33,8 +33,7 @@ Elastic search shell aims to support all ElasticSearch versions from 1.7 to 6.x.
 | Command                           | Description                                                                                    |
 |:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `snapshot repo list`              | Lists all configured snapshot repositories with their settings|
-| `snapshot repo register <name> <type> <settings>` | Registers new repository of type `<type>` and named `<name>`. Repository settings can be
-passed as key-value pairs on command line. Each key and value must be separated by space|
+| `snapshot repo register <name> <type> <settings>` | Registers new repository of type `<type>` and named `<name>`. Repository settings can be passed as key-value pairs on command line. Each key and value must be separated by space|
 | `snapshot repo verify <name>`     | Verifies repository |
 | `snapshot create <repo> <name>`   | Creates snapshot named `<name>` in repository `<repo>` |
 | `snapshot info <repo> [<name>]`   | Retrieves snapshot information from repository `<repo>`. If snapshot `<name>` is specified then its information is retrieved, otherwise information for all snapshots in the repository is printed|
