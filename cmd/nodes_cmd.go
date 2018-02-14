@@ -33,11 +33,30 @@ func getNodeStats(c *ishell.Context) {
 			errorMsg(c, err.Error())
 			return
 		}
-		print(c, nodeStats)
+		var nodeName string
+		if len(c.Args) > 0 {
+			nodeName = c.Args[0]
+		} else {
+			nodeName = ""
+		}
+		if nodeName != "" {
+			for node := range nodeStats.Nodes {
+				if node == nodeName {
+					cprintln(c, undr(node+":"))
+					cprintln(c, nodeStatsToString(nodeStats.Nodes[node]))
+					return
+				}
+			}
+			errorMsg(c, "Node '%s' not found", nodeName)
+		} else {
+			print(c, nodeStats)
+		}
 	} else {
 		errorMsg(c, errNotConnected)
 	}
 }
+
+// -- presentation functions ---
 
 func print(c *ishell.Context, n *es.NodesStats) {
 
