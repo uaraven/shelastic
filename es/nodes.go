@@ -69,7 +69,6 @@ type NodeStats struct {
 	Name             string           `json:"name"`
 	TransportAddress string           `json:"transport_address"`
 	Host             string           `json:"host"`
-	IP               []string         `json:"ip"`
 	Indices          NodeIndicesStats `json:"indices"`
 	JVM              NodeJvmStats     `json:"jvm"`
 	FS               FsStats          `json:"fs"`
@@ -122,11 +121,10 @@ func (n NodeStats) String() string {
 		"Name: %s\n"+
 		"Transport Address: %s\n"+
 		"Host: %s\n"+
-		"IP: %v\n"+
 		"JVM: %v\n"+
 		"Indices: %v\n"+
 		"Filesystem: %v",
-		n.Name, n.TransportAddress, n.Host, strings.Join(n.IP, ", "), n.JVM, n.Indices, n.FS), 2)
+		n.Name, n.TransportAddress, n.Host, n.JVM, n.Indices, n.FS), 2)
 }
 
 func (i NodeIndicesStats) String() string {
@@ -206,7 +204,7 @@ func fmtTime(seconds int64) string {
 	seconds = seconds % 60
 	hours := minutes / 60
 	minutes = minutes % 60
-	return fmt.Sprintf("%d:%d:%d", hours, minutes, seconds)
+	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 }
 
 func pad(s string, num int) string {

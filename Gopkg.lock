@@ -26,12 +26,6 @@
   version = "v0.0.3"
 
 [[projects]]
-  name = "github.com/teris-io/cli"
-  packages = ["."]
-  revision = "d52a41db4918056e508a0c03894a0e6198ed0afa"
-  version = "v1.0.0"
-
-[[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
@@ -58,6 +52,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c24258cdc7e0a69f49d7fe4029246e633211e3e2904e240e58296212ae54f75e"
+  inputs-digest = "46245e1dd642b1802bc725c5082fdeab67b3b989ccfaccab7a060b679e46fa38"
   solver-name = "gps-cdcl"
   solver-version = 1
