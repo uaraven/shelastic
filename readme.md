@@ -28,7 +28,7 @@ This project is not affiliated with Elastic in any way.
 | `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability|
 | `index view settings <index-name>` | View index settings|
 | `index view shards <index-name> [by-node | by-shard]` | View index shards|
-| `index configure <yaml-config>`      | Set index setting. See below for syntax |
+| `index configure <index-name> <config-item>`      | Set index setting. See below for syntax |
 
 ### Snapshot commands
 
@@ -47,6 +47,14 @@ This project is not affiliated with Elastic in any way.
 | Command                           | Description                                                                                    |
 |:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `node stats [node-name]`          | Displays node statistics. If `node-name` is specified then only this node stats are displayed otherwise statistics for all nodes is retrieved |
+
+### Document commands
+
+| Command                           | Description                                                                                    |
+|:----------------------------------|:-----------------------------------------------------------------------------------------------|
+| `use <index-name>`                | Select index to be used for document manipulations. If no `<index-name>` is specified it will display index that is currently in use |
+| `document properties <doc-name>`  | Lists properties of `<doc-name>` document. This does not display full metadata, just properies names
+and types |
 
 ## Supported operations
 

@@ -26,6 +26,7 @@ type Es struct {
 	aliases     map[string]string
 	nodes       map[string]*ShortNodeInfo
 	Debug       bool
+	ActiveIndex string
 }
 
 // Connect initiates connection to an Elasticsearch cluster node specified by host argument
@@ -46,7 +47,7 @@ func Connect(host string) (*Es, *PingResponse, error) {
 		Transport: transport,
 	}
 
-	es := Es{client: client, esURL: u, host: host}
+	es := Es{client: client, esURL: u, host: host, ActiveIndex: ""}
 
 	ping, err := es.Ping()
 
