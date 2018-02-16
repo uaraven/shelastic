@@ -18,11 +18,16 @@ var (
 		Health(),
 		List(),
 		Index(),
+		Snapshot(),
+		Nodes(),
 		Debug(),
+		UseIndex(),
 	}
 
-	cl  = color.New(color.FgBlue).SprintfFunc()
-	red = color.New(color.FgRed).SprintFunc()
+	cl   = color.New(color.FgBlue).SprintfFunc()
+	red  = color.New(color.FgRed).SprintFunc()
+	undr = color.New(color.Underline).SprintfFunc()
+	gr   = color.New(color.FgGreen).SprintfFunc()
 )
 
 const (

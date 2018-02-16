@@ -330,6 +330,31 @@ func (e Es) IndexConfigure(indexName string, params map[string]string) error {
 	return nil
 }
 
+//ResolveAndValidateIndex checks if indexName parameter is a valid index and in case it is an alias it resolves it to actual index name
+func (e Es) ResolveAndValidateIndex(indexName string) (string, error) {
+	if len(e.aliases) == 0 {
+		indices, err := e.ListIndices()
+		if err != nil {
+			return "", err
+		}
+		for _, idx := range indices {
+			if idx.Name == indexName {
+				return indexName, nil
+			}
+		}
+	} else {
+		if idx, ok := e.aliases[indexName]; ok {
+			return idx, nil
+		}
+		for als := range e.aliases {
+			if indexName == e.aliases[als] {
+				return als, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("Unknown index: %s", indexName)
+}
+
 func (sii ShortIndexInfo) String() string {
 	return fmt.Sprintf("%s [docs: %d, bytes: %d, aliases:%v]", sii.Name, sii.DocumentCount, sii.Size, sii.Aliases)
 }
@@ -345,8 +370,13 @@ func (sai ShortAliasInfo) String() string {
 
 func checkError(body map[string]interface{}) error {
 	if doc, ok := body["error"]; ok {
-		body = doc.(map[string]interface{})
-		reason := body["reason"].(string)
+		body, ok := doc.(map[string]interface{})
+		var reason string
+		if !ok {
+			reason = doc.(string)
+		} else {
+			reason = body["reason"].(string)
+		}
 		return fmt.Errorf(reason)
 	}
 	return nil
