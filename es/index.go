@@ -321,7 +321,7 @@ func (e Es) IndexConfigure(indexName string, params map[string]string) error {
 	payload.WriteString(strings.Join(kv, ",\n"))
 	payload.WriteString("\n}")
 
-	resp, err := e.putJson(fmt.Sprintf("/%s/_settings", indexName), payload.String())
+	resp, err := e.putJSON(fmt.Sprintf("/%s/_settings", indexName), payload.String())
 
 	err = checkError(resp)
 	if err != nil {

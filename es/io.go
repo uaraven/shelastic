@@ -61,7 +61,7 @@ func (e Es) post(path string, data string) (*http.Response, error) {
 	return resp, err
 }
 
-func (e Es) putJson(path string, data string) (map[string]interface{}, error) {
+func (e Es) putJSON(path string, data string) (map[string]interface{}, error) {
 	pathURL, err := url.Parse(path)
 	if err != nil {
 		return nil, err
