@@ -233,7 +233,7 @@ func (e Es) Refresh(indexName string) error {
 // For ES version 1.x and 2.x this calls _optimize API
 func (e Es) ForceMerge(indexName string) error {
 	var apiName string
-	if e.version[0] < 5 {
+	if e.Version[0] < 5 {
 		apiName = "_optimize"
 	} else {
 		apiName = "_forcemerge"

@@ -98,3 +98,51 @@ func (e Es) GetNodeStats(nodes []string) (*NodesStats, error) {
 	}
 	return stats, nil
 }
+
+type OSInfo struct {
+	Name    string `json:"name"`
+	Arch    string `json:"arch"`
+	Version string `json:"version"`
+	CPUs    int    `json:"allocated_processors"`
+}
+
+type JVMInfo struct {
+	Version   string   `json:"version"`
+	VMName    string   `json:"vm_name"`
+	VMVersion string   `json:"vm_version"`
+	VMVendor  string   `json:"vm_vendor"`
+	Arguments []string `json:"input_arguments"`
+}
+
+type NodeEnvironmentInfo struct {
+	OS  *OSInfo  `json:"os"`
+	JVM *JVMInfo `json:"jvm"`
+}
+
+type NodesEnvironmentInfo struct {
+	Nodes map[string]NodeEnvironmentInfo `json:"nodes"`
+}
+
+func (e Es) GetNodeEnvironmentInfo(nodeNames []string) (*NodesEnvironmentInfo, error) {
+	nodestr := strings.Join(nodeNames, ",")
+	var url string
+	if len(nodeNames) > 0 {
+		url = fmt.Sprintf("_nodes/%s", nodestr)
+	} else {
+		url = "_nodes/"
+	}
+
+	body, err := e.getData(url)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &NodesEnvironmentInfo{}
+
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

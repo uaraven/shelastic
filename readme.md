@@ -47,12 +47,14 @@ This project is not affiliated with Elastic in any way.
 | Command                           | Description                                                                                    |
 |:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `node stats [node-name]`          | Displays node statistics. If `node-name` is specified then only this node stats are displayed otherwise statistics for all nodes is retrieved |
+| `node environment [node-name]`    | Displays node environment: OS name version and JVM name and version|
 
 ### Document commands
 
 | Command                           | Description                                                                                    |
 |:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `use <index-name>`                | Select index to be used for document manipulations. If no `<index-name>` is specified it will display index that is currently in use |
+| `document list`                   | Lists all documents in index |
 | `document properties <doc-name>`  | Lists properties of `<doc-name>` document. This does not display full metadata, just properies names
 and types |
 
@@ -73,9 +75,10 @@ and types |
     - [x] View routing - as part of settings
     - [x] View shards allocation
     - [ ] Change routing
-    - [ ] View statistics
+    - [x] View shards
 - Document operations:
-    - [ ] List properties for document
+    - [x] List documents in index
+    - [x] List properties for document
     - [ ] Insert/Update document
     - [ ] Delete document
     - [ ] View document by id
@@ -89,11 +92,10 @@ and types |
 - Query operations:
     - [ ] JSON requests
 - Node operations:
-    - [ ] JVM stats
-        - [ ] JVM name and version
-        - [ ] JVM arguments
-    - [ ] OS stats
-        - [ ] CPU, memory
+    - [x] Node stats
+        - [x] OS and JVM name and version
+        - [x] Memory
+        - [x] File system
 - Cluster operations
     - Routing:
         - [ ] Decomission a node

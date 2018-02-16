@@ -22,12 +22,13 @@ var (
 		Nodes(),
 		Debug(),
 		UseIndex(),
+		Document(),
 	}
 
 	cl   = color.New(color.FgBlue).SprintfFunc()
 	red  = color.New(color.FgRed).SprintFunc()
 	undr = color.New(color.Underline).SprintfFunc()
-	gr   = color.New(color.FgGreen).SprintfFunc()
+	gr   = color.New(color.FgCyan).SprintfFunc()
 )
 
 const (

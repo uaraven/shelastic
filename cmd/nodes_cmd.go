@@ -23,12 +23,22 @@ func Nodes() *ishell.Cmd {
 		Func: getNodeStats,
 	})
 
+	snapshot.AddCmd(&ishell.Cmd{
+		Name: "environment",
+		Help: "Get OS and JVM statistics",
+		Func: getEnvironmentStats,
+	})
+
 	return snapshot
 }
 
 func getNodeStats(c *ishell.Context) {
 	if context != nil {
 		nodeStats, err := context.GetNodeStats(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
 		if err != nil {
 			errorMsg(c, err.Error())
 			return
@@ -56,15 +66,72 @@ func getNodeStats(c *ishell.Context) {
 	}
 }
 
+func getEnvironmentStats(c *ishell.Context) {
+	if context != nil {
+		nodeStats, err := context.GetNodeEnvironmentInfo(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		var nodeName string
+		if len(c.Args) > 0 {
+			nodeName = c.Args[0]
+		} else {
+			nodeName = ""
+		}
+		if nodeName != "" {
+			for node := range nodeStats.Nodes {
+				if node == nodeName {
+					cprintln(c, undr(node+":"))
+					cprintln(c, environmentToString(nodeStats.Nodes[node]))
+					return
+				}
+			}
+			errorMsg(c, "Node '%s' not found", nodeName)
+		} else {
+			printEnvironment(c, nodeStats.Nodes)
+		}
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
 // -- presentation functions ---
 
 func print(c *ishell.Context, n *es.NodesStats) {
-
 	for nodeID := range n.Nodes {
 		cprintf(c, "\n%s", undr(nodeID))
 		cprintf(c, ": %v", nodeStatsToString(n.Nodes[nodeID]))
 	}
+}
 
+func printEnvironment(c *ishell.Context, nodeEnv map[string]es.NodeEnvironmentInfo) {
+	for nodeID := range nodeEnv {
+		cprintf(c, "\n%s", undr(nodeID))
+		cprintln(c, ": %s", environmentToString(nodeEnv[nodeID]))
+	}
+}
+
+func environmentToString(n es.NodeEnvironmentInfo) string {
+	return pad(fmt.Sprintf("\n"+
+		"OS: %s\n"+
+		"JVM: %s", osToString(n.OS), jvmVerToString(n.JVM)), 2)
+}
+
+func osToString(os *es.OSInfo) string {
+	return pad(fmt.Sprintf("\n"+
+		"%s %s %s\n"+
+		"Allocated CPUs: %d", os.Name, os.Arch, os.Version, os.CPUs), 2)
+}
+
+func jvmVerToString(j *es.JVMInfo) string {
+	return pad(fmt.Sprintf("\n"+
+		"%s %s \n"+
+		"Vendor: %s", j.VMName, j.Version, j.VMVendor), 2)
 }
 
 func nodeStatsToString(n es.NodeStats) string {

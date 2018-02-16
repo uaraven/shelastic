@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"gopkg.in/yaml.v2"
@@ -77,6 +78,7 @@ func GetAsBool(inp map[string]interface{}, name string, orElse ...bool) bool {
 // This is naive implemenation which uses yaml as a convertation medium
 func DictToAny(inp map[string]interface{}, receiver interface{}) error {
 	data, err := MapToYaml(inp)
+	fmt.Println(data)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,35 @@ type DocumentProperty struct {
 	Type string
 }
 
+func (e Es) ListDocuments(index string) ([]string, error) {
+	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", index))
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(body)
+	if err != nil {
+		return nil, fmt.Errorf("Index %s failed: %s", index, err.Error())
+	}
+
+	index = e.resolveAlias(index)
+
+	body = body[index].(map[string]interface{})
+
+	if mapping, ok := body["mappings"]; ok {
+		body = mapping.(map[string]interface{})
+	}
+
+	result := make([]string, len(body))
+	i := 0
+	for doc := range body {
+		result[i] = doc
+		i++
+	}
+	return result, nil
+}
+
 //ListProperties lists properties of a given document of a given index
 func (e Es) ListProperties(index string, doc string) ([]DocumentProperty, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping/%s", index, doc))
