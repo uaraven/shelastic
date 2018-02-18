@@ -28,7 +28,9 @@ This project is not affiliated with Elastic in any way.
 | `index view mappings <index-name> [doc-name] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability|
 | `index view settings <index-name>` | View index settings|
 | `index view shards <index-name> [by-node | by-shard]` | View index shards|
-| `index configure <index-name> <config-item>`      | Set index setting. See below for syntax |
+| `index configure <index-name> <config-item>`        | Set index setting. See below for syntax |
+| `index restrict <index-name> selector [<target>]`    | moves all shards to given node by selector. Selector can be one of `name`, `host` or `ip`. If `<target>` is not specified, then restriction is removed |
+
 
 ### Snapshot commands
 
@@ -48,6 +50,8 @@ This project is not affiliated with Elastic in any way.
 |:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `node stats [node-name]`          | Displays node statistics. If `node-name` is specified then only this node stats are displayed otherwise statistics for all nodes is retrieved |
 | `node environment [node-name]`    | Displays node environment: OS name version and JVM name and version|
+| `node shards [<node-name>]`         | Displays indices and shards located on node. If node name is not specified, information is printed for all nodes|
+| `node decomission <node-name>`    | Disables allocation for given node|
 
 ### Document commands
 
@@ -107,9 +111,11 @@ of the document. Complete document with ";" |
         - [x] OS and JVM name and version
         - [x] Memory
         - [x] File system
+    - [ ] View indices and shards allocated to this node
 - Cluster operations
     - Routing:
-        - [ ] Decomission a node
+        - [x] Ensure node has all shards
+        - [ ] Decomission a node (ensure node has no shards)
 
 ## Changing index settings
 

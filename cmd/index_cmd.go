@@ -73,6 +73,12 @@ func Index() *ishell.Cmd {
 		Func: configureIndex,
 	})
 
+	index.AddCmd(&ishell.Cmd{
+		Name: "restrict",
+		Help: "Move index shards to one node",
+		Func: restrictIndex,
+	})
+
 	return index
 }
 
@@ -341,5 +347,44 @@ func configureIndex(c *ishell.Context) {
 
 	} else {
 		errorMsg(c, errNotConnected)
+	}
+}
+
+const (
+	restrictUsage = "Usage: restrict <index> name|ip|host <target>"
+)
+
+func restrictIndex(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	if len(c.Args) < 2 {
+		errorMsg(c, "Not enough parameters."+restrictUsage)
+		return
+	}
+	index := c.Args[0]
+	selector := c.Args[1]
+	if selector != "name" && selector != "ip" && selector != "host" {
+		errorMsg(c, "Restriction can be done by node name, host name or by ip address."+restrictUsage)
+		return
+	}
+	var route string
+	if len(c.Args) == 3 {
+		route = c.Args[2]
+	} else {
+		route = ""
+	}
+
+	err := context.MoveAllShardsToNode(index, "_"+selector, route)
+
+	if err != nil {
+		errorMsg(c, err.Error())
+	} else {
+		if route == "" {
+			cprintln(c, "Restrictions removed")
+		} else {
+			cprintln(c, "Ok")
+		}
 	}
 }

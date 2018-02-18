@@ -280,7 +280,7 @@ func (e Es) IndexShards(indexName string) (IndexShards, error) {
 			primary := routing["primary"].(bool)
 			nodeID := routing["node"].(string)
 
-			node, ok := e.nodes[nodeID]
+			node, ok := e.Nodes[nodeID]
 			if !ok {
 				return nil, fmt.Errorf("Failed to parse response: Unknown node %s", node)
 			}
@@ -370,6 +370,25 @@ func (e Es) ResolveAndValidateIndex(indexName string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("Unknown index: %s", indexName)
+}
+
+func (e Es) MoveAllShardsToNode(index string, selector string, node string) error {
+	if node != "" {
+		node = "\"" + node + "\""
+	} else {
+		node = "null"
+	}
+	postBody := fmt.Sprintf("{\"index.routing.allocation.require.%s\": %s}", selector, node)
+
+	resp, err := e.putJSON(fmt.Sprintf("/%s/_settings", index), postBody)
+
+	if err != nil {
+		return err
+	}
+
+	err = checkError(resp)
+
+	return err
 }
 
 func (sii ShortIndexInfo) String() string {

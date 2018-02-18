@@ -12,24 +12,30 @@ import (
 
 // Nodes wraps all nodes functions
 func Nodes() *ishell.Cmd {
-	snapshot := &ishell.Cmd{
+	nodes := &ishell.Cmd{
 		Name: "node",
 		Help: "Node operations",
 	}
 
-	snapshot.AddCmd(&ishell.Cmd{
+	nodes.AddCmd(&ishell.Cmd{
 		Name: "stats",
 		Help: "Get node statistics",
 		Func: getNodeStats,
 	})
 
-	snapshot.AddCmd(&ishell.Cmd{
+	nodes.AddCmd(&ishell.Cmd{
 		Name: "environment",
 		Help: "Get OS and JVM statistics",
 		Func: getEnvironmentStats,
 	})
 
-	return snapshot
+	nodes.AddCmd(&ishell.Cmd{
+		Name: "shards",
+		Help: "Show shard allocation for nodes",
+		Func: nodeShards,
+	})
+
+	return nodes
 }
 
 func getNodeStats(c *ishell.Context) {
@@ -98,6 +104,87 @@ func getEnvironmentStats(c *ishell.Context) {
 	} else {
 		errorMsg(c, errNotConnected)
 	}
+}
+
+func nodeShards(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+
+	var nodes []string
+
+	if len(c.Args) < 1 {
+		nodes = make([]string, len(context.Nodes))
+		i := 0
+		for n := range context.Nodes {
+			nodes[i] = context.Nodes[n].Name
+			i++
+		}
+	} else {
+		nodes = []string{c.Args[0]}
+	}
+	indices, err := context.ListIndices()
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+
+	for _, node := range nodes {
+		nodeIndexMap, err := buildNodeIndexInfo(node, indices)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		cprintf(c, undr(node))
+		cprintln(c, ":")
+		for index := range nodeIndexMap {
+			cprintln(c, "  Index '%s':", index)
+			for _, shard := range nodeIndexMap[index] {
+				var prim string
+				if shard.Primary {
+					prim = "Primary"
+				} else {
+					prim = "Replica"
+				}
+				cprintln(c, "    %d: %s, %s", shard.ID, shard.State, prim)
+			}
+		}
+	}
+
+}
+
+type shard struct {
+	ID      int
+	Primary bool
+	State   string
+}
+
+func buildNodeIndexInfo(node string, indices []*es.ShortIndexInfo) (map[string][]shard, error) {
+	nodeIndexInfo := make(map[string][]shard)
+	for _, idx := range indices {
+		shards, err := context.IndexShards(idx.Name)
+		if err != nil {
+			return nil, err
+		}
+		var nodeShards []shard
+		for _, sh := range shards {
+			for _, is := range sh.Shards {
+				if is.Node.Name == node {
+					shard := shard{
+						ID:      sh.ID,
+						Primary: is.Primary,
+						State:   is.State,
+					}
+					nodeShards = append(nodeShards, shard)
+				}
+			}
+		}
+		if len(nodeShards) > 0 {
+			nodeIndexInfo[idx.Name] = nodeShards
+		}
+	}
+	return nodeIndexInfo, nil
 }
 
 // -- presentation functions ---
