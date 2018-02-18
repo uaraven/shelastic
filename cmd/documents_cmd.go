@@ -19,7 +19,11 @@ func UseIndex() *ishell.Cmd {
 				errorMsg(c, errNotConnected)
 			} else {
 				if len(c.Args) < 1 {
-					errorMsg(c, "Index name not specified")
+					if context.ActiveIndex != "" {
+						cprintln(c, "Using index %s", gr(context.ActiveIndex))
+					} else {
+						errorMsg(c, "Index name not specified")
+					}
 					return
 				}
 				s, err := context.ResolveAndValidateIndex(c.Args[0])
@@ -68,6 +72,12 @@ func Document() *ishell.Cmd {
 		Name: "delete",
 		Help: "Deletes document by its id. Usage: delete <type> <id>",
 		Func: deleteDocument,
+	})
+
+	document.AddCmd(&ishell.Cmd{
+		Name: "search",
+		Help: "Peforms simple search. Usage: search [<types>] <search string>",
+		Func: searchDocument,
 	})
 
 	return document
@@ -164,4 +174,37 @@ func deleteDocument(c *ishell.Context) {
 		return
 	}
 	cprintln(c, "Ok")
+}
+
+func searchDocument(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+	if context.ActiveIndex == "" {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	if len(c.Args) < 1 {
+		errorMsg(c, "Not enough parameters. Usage: search [<doc-types>] <search query>")
+		return
+	}
+	var docs string
+	var query string
+	if len(c.Args) == 1 {
+		docs = ""
+		query = c.Args[0]
+	} else {
+		docs = c.Args[0]
+		query = c.Args[1]
+	}
+	sr, err := context.Search(context.ActiveIndex, docs, query)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	cprintln(c, "Total hits: %d\n", sr.Total)
+	for _, hit := range sr.Hits {
+		cprintln(c, hit)
+	}
 }

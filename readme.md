@@ -57,6 +57,9 @@ This project is not affiliated with Elastic in any way.
 | `document list`                   | Lists all documents in index |
 | `document properties <doc-name>`  | Lists properties of `<doc-name>` document. This does not display full metadata, just properies names
 and types |
+| `document get <doc-name> <id>`    | Retrieves document by id |
+| `document delete <doc-name> <id>` | Deletes document by id| 
+| `document search [<doc-names>] <query>` | Search for query in `<doc-names>`. Document name can be omitted.|
 
 ## Supported operations
 
@@ -89,7 +92,8 @@ and types |
     - [x] View snapshot information
     - [x] Delete snapshot
     - [x] Restore snapshot
-- Query operations:
+- Search operations:
+    - [x] Simple URL search
     - [ ] JSON requests
 - Node operations:
     - [x] Node stats

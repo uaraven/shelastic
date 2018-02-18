@@ -11,6 +11,12 @@ type DocumentProperty struct {
 	Type string
 }
 
+//SearchResult contains results for a simple search query
+type SearchResult struct {
+	Total int
+	Hits  []string
+}
+
 // ListDocuments lists names of the documents in the index
 func (e Es) ListDocuments(index string) ([]string, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", index))
@@ -125,4 +131,45 @@ func (e Es) DeleteDocument(index string, docType string, id string) error {
 		return fmt.Errorf("Failed to delete document: " + result)
 	}
 	return fmt.Errorf("Failed to parse response from server")
+}
+
+//Search function implements ES URL search
+func (e Es) Search(index string, doc string, query string) (*SearchResult, error) {
+	if doc != "" {
+		doc = "/" + doc
+	}
+	body, err := e.getJSON(fmt.Sprintf("/%s%s/_search?q=%s", index, doc, query))
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(body)
+	if err != nil {
+		return nil, err
+	}
+
+	allhits, ok := body["hits"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Failed to retrieve hits from response")
+	}
+
+	total := int(allhits["total"].(float64))
+	hits := allhits["hits"].([]interface{})
+
+	result := make([]string, len(hits))
+	i := 0
+	for _, hit := range hits {
+		record, err := utils.MapToYaml(hit)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = record
+		i++
+	}
+
+	return &SearchResult{
+		Total: total,
+		Hits:  result,
+	}, nil
 }
