@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"shelastic/utils"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -248,8 +249,10 @@ func (e Es) ForceMerge(indexName string) error {
 	return err
 }
 
+type IndexShards []IndexShard
+
 //IndexShards returns list of shards allocated for a given index
-func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
+func (e Es) IndexShards(indexName string) (IndexShards, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_segments", indexName))
 
 	if err != nil {
@@ -265,7 +268,7 @@ func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
 
 	shards := body["indices"].(map[string]interface{})[indexName].(map[string]interface{})["shards"].(map[string]interface{})
 
-	var result []*IndexShard
+	var result []IndexShard
 	for shardIdx := range shards {
 		shard := shards[shardIdx].([]interface{})
 		var shardInfos = make([]*ShardInfo, len(shard))
@@ -295,13 +298,27 @@ func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
 			shardInfos[idx] = shardInfo
 		}
 		id, _ := strconv.Atoi(shardIdx)
-		indexShard := &IndexShard{
+		indexShard := IndexShard{
 			ID:     id,
 			Shards: shardInfos,
 		}
 		result = append(result, indexShard)
 	}
-	return result, nil
+	res := IndexShards(result)
+	sort.Sort(res)
+	return res, nil
+}
+
+func (is IndexShards) Len() int {
+	return len(is)
+}
+
+func (is IndexShards) Less(i, j int) bool {
+	return is[i].ID < is[j].ID
+}
+
+func (is IndexShards) Swap(i, j int) {
+	is[i], is[j] = is[j], is[i]
 }
 
 // IndexConfigure updates configuration for a given index. Configuration must be provided in YAML format

@@ -248,36 +248,42 @@ func viewIndexShards(c *ishell.Context) {
 	}
 }
 
-func printIndexShardsByNode(c *ishell.Context, indexShards []*es.IndexShard) {
-	nodes := make(map[string][]*es.ShardInfo)
+func printIndexShardsByNode(c *ishell.Context, indexShards es.IndexShards) {
+
+	type ShardByNode struct {
+		ID    int
+		Shard *es.ShardInfo
+	}
+
+	nodes := make(map[string][]*ShardByNode)
 	for _, indexShard := range indexShards {
 		for _, shardInfo := range indexShard.Shards {
 			nodeID := shardInfo.Node.String()
 			if shardList, ok := nodes[nodeID]; ok {
-				shardList = append(shardList, shardInfo)
+				shardList = append(shardList, &ShardByNode{ID: indexShard.ID, Shard: shardInfo})
 				nodes[nodeID] = shardList
 			} else {
-				shardList := make([]*es.ShardInfo, 1)
-				shardList[0] = shardInfo
+				shardList := make([]*ShardByNode, 1)
+				shardList[0] = &ShardByNode{ID: indexShard.ID, Shard: shardInfo}
 				nodes[nodeID] = shardList
 			}
 		}
 	}
 	for nodeID := range nodes {
 		cprintln(c, "%s:", nodeID)
-		for idx, shard := range nodes[nodeID] {
+		for _, shard := range nodes[nodeID] {
 			var prim string
-			if shard.Primary {
+			if shard.Shard.Primary {
 				prim = "Primary"
 			} else {
 				prim = "Replica"
 			}
-			cprintln(c, "   %d: %s, %s", idx, shard.State, prim)
+			cprintln(c, "   %d: %s, %s", shard.ID, shard.Shard.State, prim)
 		}
 	}
 }
 
-func printIndexShardsByShard(c *ishell.Context, indexShards []*es.IndexShard) {
+func printIndexShardsByShard(c *ishell.Context, indexShards es.IndexShards) {
 	for _, indexShard := range indexShards {
 		cprintln(c, "Shard %d:", indexShard.ID)
 		for shardIdx, shardInfo := range indexShard.Shards {
