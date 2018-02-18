@@ -210,10 +210,10 @@ func (e Es) getJSON(path string) (map[string]interface{}, error) {
 	return body, err
 }
 
-func (e Es) delete(path string) error {
+func (e Es) delete(path string) (map[string]interface{}, error) {
 	pathURL, err := url.Parse(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	reqURL := e.esURL.ResolveReference(pathURL)
 	if e.Debug {
@@ -221,15 +221,34 @@ func (e Es) delete(path string) error {
 	}
 	req, err := http.NewRequest(http.MethodDelete, reqURL.String(), nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if e.Debug {
 		dumpRequest(req, "")
 	}
 
-	_, err = e.client.Do(req)
+	resp, err := e.client.Do(req)
 
-	return err
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if e.Debug {
+		if err != nil {
+			fmt.Println("Response error: ", err.Error())
+		} else {
+			dumpResponse(resp, bodyBytes)
+		}
+	}
+
+	var body map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		return nil, err
+	}
+
+	return body, err
 }
 
 func dumpRequest(req *http.Request, body string) {

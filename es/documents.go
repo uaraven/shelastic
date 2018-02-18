@@ -2,6 +2,7 @@ package es
 
 import (
 	"fmt"
+	"shelastic/utils"
 )
 
 //DocumentProperty is a container for simple property information, it includes Name and Type
@@ -10,6 +11,7 @@ type DocumentProperty struct {
 	Type string
 }
 
+// ListDocuments lists names of the documents in the index
 func (e Es) ListDocuments(index string) ([]string, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", index))
 
@@ -77,4 +79,50 @@ func (e Es) ListProperties(index string, doc string) ([]DocumentProperty, error)
 		i++
 	}
 	return result, nil
+}
+
+// GetDocument reads document by id and returns string with YAML-formatted document
+func (e Es) GetDocument(index string, docType string, id string) (string, error) {
+	body, err := e.getJSON(fmt.Sprintf("/%s/%s/%s", index, docType, id))
+
+	if err != nil {
+		return "", err
+	}
+
+	err = checkError(body)
+	if err != nil {
+		return "", fmt.Errorf("Index %s failed: %s", index, err.Error())
+	}
+
+	result, err := utils.MapToYaml(body)
+
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+// DeleteDocument deletes document by id
+func (e Es) DeleteDocument(index string, docType string, id string) error {
+	body, err := e.delete(fmt.Sprintf("/%s/%s/%s", index, docType, id))
+
+	if err != nil {
+		return err
+	}
+
+	err = checkError(body)
+	if err != nil {
+		return fmt.Errorf("Index %s failed: %s", index, err.Error())
+	}
+
+	result, ok := body["result"].(string)
+
+	if ok && result == "deleted" {
+		return nil
+	}
+
+	if ok {
+		return fmt.Errorf("Failed to delete document: " + result)
+	}
+	return fmt.Errorf("Failed to parse response from server")
 }

@@ -54,8 +54,20 @@ func Document() *ishell.Cmd {
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "properties",
-		Help: "Show properties of the document",
+		Help: "Show properties of the document. Usage: properties <type>",
 		Func: showProperties,
+	})
+
+	document.AddCmd(&ishell.Cmd{
+		Name: "get",
+		Help: "Retrieves document by its id. Usage: get <type> <id>",
+		Func: getDocument,
+	})
+
+	document.AddCmd(&ishell.Cmd{
+		Name: "delete",
+		Help: "Deletes document by its id. Usage: delete <type> <id>",
+		Func: deleteDocument,
 	})
 
 	return document
@@ -110,4 +122,46 @@ func showProperties(c *ishell.Context) {
 			cprintln(c, "%s: %s", prop.Name, prop.Type)
 		}
 	}
+}
+
+func getDocument(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+	if context.ActiveIndex == "" {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	if len(c.Args) < 2 {
+		errorMsg(c, "Not enough parameters. Usage: get <doc-type> <id>")
+		return
+	}
+	doc, err := context.GetDocument(context.ActiveIndex, c.Args[0], c.Args[1])
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	cprintln(c, doc)
+}
+
+func deleteDocument(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+	if context.ActiveIndex == "" {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	if len(c.Args) < 2 {
+		errorMsg(c, "Not enough parameters. Usage: delete <doc-type> <id>")
+		return
+	}
+	err := context.DeleteDocument(context.ActiveIndex, c.Args[0], c.Args[1])
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	cprintln(c, "Ok")
 }

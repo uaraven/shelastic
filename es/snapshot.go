@@ -81,7 +81,7 @@ func (e Es) GetSnapshotInfo(repo string, snapshotName string) (*SnapshotInfo, er
 // DeleteSnapshot deletes a snapshot with a given name from a repository
 func (e Es) DeleteSnapshot(repo string, snapshotName string) error {
 	url := fmt.Sprintf("/_snapshot/%s/%s", repo, snapshotName)
-	err := e.delete(url)
+	_, err := e.delete(url)
 	return err
 }
 

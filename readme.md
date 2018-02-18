@@ -80,8 +80,8 @@ and types |
     - [x] List documents in index
     - [x] List properties for document
     - [ ] Insert/Update document
-    - [ ] Delete document
-    - [ ] View document by id
+    - [x] Delete document
+    - [x] View document by id
 - Snapshots
     - [x] Create repository
     - [x] List repositories
