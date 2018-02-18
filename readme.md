@@ -51,15 +51,22 @@ This project is not affiliated with Elastic in any way.
 
 ### Document commands
 
+All document commands accept index name as first parameter. By using 'use index-name' command one can "open" and it will be implicitly used
+in all document commands.
+
+Even when an index is in use, explicit index name may be supplied to any document command. Explicitly specified index will take precedence.
+
 | Command                           | Description                                                                                    |
 |:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `use <index-name>`                | Select index to be used for document manipulations. If no `<index-name>` is specified it will display index that is currently in use |
-| `document list`                   | Lists all documents in index |
-| `document properties <doc-name>`  | Lists properties of `<doc-name>` document. This does not display full metadata, just properies names
+| `document list [index]`                   | Lists all documents in index |
+| `document properties [index] <doc-name>`  | Lists properties of `<doc-name>` document. This does not display full metadata, just properies names
 and types |
-| `document get <doc-name> <id>`    | Retrieves document by id |
-| `document delete <doc-name> <id>` | Deletes document by id| 
-| `document search [<doc-names>] <query>` | Search for query in `<doc-names>`. Document name can be omitted.|
+| `document get [index] <doc-name> <id>`    | Retrieves document by id |
+| `document delete [index] <doc-name> <id>` | Deletes document by id| 
+| `document search [index] [<doc-names>] <query>` | Search for query in `<doc-names>`. Document name can be omitted.|
+| `document put [index] <doc-name> id`      | Upserts document into `index.doc-name` with id == id. This command will start multi-line editor to enter JSON
+of the document. Complete document with ";" |
 
 ## Supported operations
 
@@ -82,7 +89,7 @@ and types |
 - Document operations:
     - [x] List documents in index
     - [x] List properties for document
-    - [ ] Insert/Update document
+    - [x] Insert/Update document
     - [x] Delete document
     - [x] View document by id
 - Snapshots

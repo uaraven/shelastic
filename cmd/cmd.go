@@ -195,3 +195,7 @@ func onConnect(es *es.Es, c *ishell.Context) {
 	cprintln(c, "Status: %s", colorw(health.Status))
 	c.SetPrompt(health.ClusterName + " $> ")
 }
+
+func restorePrompt(context *es.Es, c *ishell.Context) {
+	c.SetPrompt(context.ClusterName + " $> ")
+}

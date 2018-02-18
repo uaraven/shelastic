@@ -133,6 +133,26 @@ func (e Es) DeleteDocument(index string, docType string, id string) error {
 	return fmt.Errorf("Failed to parse response from server")
 }
 
+//PutDocument stores JSON document in index/doc with provided id
+func (e Es) PutDocument(index string, doc string, id string, reqBody string) (string, error) {
+	if id == "-" {
+		id = ""
+	}
+	body, err := e.putJSON(fmt.Sprintf("/%s/%s/%s", index, doc, id), reqBody)
+	if err != nil {
+		return "failed", err
+	}
+	err = checkError(body)
+	if err != nil {
+		return "failed", err
+	}
+	result, ok := body["result"].(string)
+	if !ok {
+		return "failed", fmt.Errorf("Failed to parse response")
+	}
+	return result, nil
+}
+
 //Search function implements ES URL search
 func (e Es) Search(index string, doc string, query string) (*SearchResult, error) {
 	if doc != "" {

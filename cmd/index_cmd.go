@@ -318,7 +318,7 @@ func configureIndex(c *ishell.Context) {
 					payload[strings.TrimSpace(kv[0])] = kv[1]
 				}
 			}
-			c.SetPrompt(context.ClusterName + " $> ")
+			restorePrompt(context, c)
 		} else {
 			v := c.Args[2]
 			if v[0] == '(' && v[len(v)-1] == ')' {
