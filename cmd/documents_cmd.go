@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"encoding/json"
 
 	ishell "gopkg.in/abiosoft/ishell.v2"
 )
@@ -92,6 +92,12 @@ func Document() *ishell.Cmd {
 		Name: "search",
 		Help: "Peforms simple search. Usage: search [<index>] [<types>] <search string>",
 		Func: searchDocument,
+	})
+
+	document.AddCmd(&ishell.Cmd{
+		Name: "query",
+		Help: "Peforms search using query DSL. Usage: query [<index>]",
+		Func: queryDocument,
 	})
 
 	return document
@@ -186,10 +192,10 @@ func putDocument(c *ishell.Context) {
 		errorMsg(c, "Not enough parameters. Usage: get [index] <doc-type> <id>")
 		return
 	}
+	cprintln(c, "Enter document body, ending with ';':")
 	c.SetPrompt(">>> ")
 	json := c.ReadMultiLines(";")
 	json = json[:len(json)-1]
-	fmt.Println(json)
 	restorePrompt(context, c)
 	response, err := context.PutDocument(selector.index, selector.document, selector.rest[0], json)
 	if err != nil {
@@ -231,15 +237,50 @@ func searchDocument(c *ishell.Context) {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
-	if selector.index == "" {
-		errorMsg(c, errIndexNotSelected)
-		return
-	}
 	if len(selector.rest) == 0 {
 		errorMsg(c, "Not enough parameters. Usage: search [index] [<doc-types>] <search query>")
 		return
 	}
 	sr, err := context.Search(selector.index, selector.document, selector.rest[0])
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	cprintln(c, "Total hits: %d\n", sr.Total)
+	for _, hit := range sr.Hits {
+		cprintln(c, hit)
+	}
+}
+
+func queryDocument(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+	selector := parseArguments(c.Args, 0)
+
+	cprintln(c, "Enter query, ending with ';'")
+	c.SetPrompt(">>> ")
+	q := c.ReadMultiLines(";")
+	q = q[:len(q)-1]
+	restorePrompt(context, c)
+
+	var body map[string]interface{}
+
+	if err := json.Unmarshal([]byte(q), &body); err != nil {
+		errorMsg(c, "Invalid query JSON: "+err.Error())
+		return
+	}
+
+	body["size"] = 20
+	bytes, err := json.Marshal(body)
+
+	if err != nil {
+		errorMsg(c, "Failed to repack query JSON: "+err.Error())
+		return
+	}
+
+	sr, err := context.Query(selector.index, string(bytes))
 	if err != nil {
 		errorMsg(c, err.Error())
 		return

@@ -8,7 +8,7 @@ import (
 
 const (
 	// Version of shelastic
-	Version = "0.1"
+	Version = "0.2"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	shell.ShowPrompt(true)
 
 	// display welcome info.
-	shell.Println("Elasticsearch shell", "v."+Version)
+	shell.Println("Shelastic [Elasticsearch shell]", "v"+Version)
 
 	for _, c := range cmd.Commands {
 		shell.AddCmd(c)

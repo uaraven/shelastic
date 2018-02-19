@@ -193,3 +193,44 @@ func (e Es) Search(index string, doc string, query string) (*SearchResult, error
 		Hits:  result,
 	}, nil
 }
+
+//Query function implements ES request body search
+func (e Es) Query(index string, query string) (*SearchResult, error) {
+	if index != "" {
+		index = "/" + index
+	}
+	body, err := e.getJSONWithBody(fmt.Sprintf("%s/_search", index), query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(body)
+	if err != nil {
+		return nil, err
+	}
+
+	allhits, ok := body["hits"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Failed to retrieve hits from response")
+	}
+
+	total := int(allhits["total"].(float64))
+	hits := allhits["hits"].([]interface{})
+
+	result := make([]string, len(hits))
+	i := 0
+	for _, hit := range hits {
+		record, err := utils.MapToYaml(hit)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = record
+		i++
+	}
+
+	return &SearchResult{
+		Total: total,
+		Hits:  result,
+	}, nil
+}

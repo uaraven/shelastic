@@ -69,8 +69,9 @@ and types |
 | `document get [index] <doc-name> <id>`    | Retrieves document by id |
 | `document delete [index] <doc-name> <id>` | Deletes document by id| 
 | `document search [index] [<doc-names>] <query>` | Search for query in `<doc-names>`. Document name can be omitted.|
+| `document query [index]`  | Search using Query DSL. Query must be entered as JSON at the prompt. This will always update "size" parameter to 20|
 | `document put [index] <doc-name> id`      | Upserts document into `index.doc-name` with id == id. This command will start multi-line editor to enter JSON
-of the document. Complete document with ";" |
+of the document. Complete document with ";". Number of documents returned with this query will be limited to 20. If you need more results use `export` command |
 
 ## Supported operations
 
@@ -88,7 +89,6 @@ of the document. Complete document with ";" |
     - [x] View mappings
     - [x] View routing - as part of settings
     - [x] View shards allocation
-    - [ ] Change routing
     - [x] View shards
 - Document operations:
     - [x] List documents in index
@@ -105,7 +105,7 @@ of the document. Complete document with ";" |
     - [x] Restore snapshot
 - Search operations:
     - [x] Simple URL search
-    - [ ] JSON requests
+    - [x] JSON requests
 - Node operations:
     - [x] Node stats
         - [x] OS and JVM name and version
