@@ -35,6 +35,12 @@ func Nodes() *ishell.Cmd {
 		Func: nodeShards,
 	})
 
+	nodes.AddCmd(&ishell.Cmd{
+		Name: "decomission",
+		Help: "Decomission node(s)",
+		Func: decomissionNodes,
+	})
+
 	return nodes
 }
 
@@ -185,6 +191,26 @@ func buildNodeIndexInfo(node string, indices []*es.ShortIndexInfo) (map[string][
 		}
 	}
 	return nodeIndexInfo, nil
+}
+
+func decomissionNodes(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+
+	if len(c.Args) < 1 {
+		cprintln(c, "No node specified, removing any allocation restrictions")
+	}
+
+	nodes := strings.Join(c.Args, ",")
+
+	err := context.DecomissionNode(nodes)
+	if err != nil {
+		errorMsg(c, "Failed to modify cluster allocation: "+err.Error())
+	} else {
+		cprintln(c, "Ok")
+	}
 }
 
 // -- presentation functions ---

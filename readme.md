@@ -50,8 +50,8 @@ This project is not affiliated with Elastic in any way.
 |:----------------------------------|:-----------------------------------------------------------------------------------------------|
 | `node stats [node-name]`          | Displays node statistics. If `node-name` is specified then only this node stats are displayed otherwise statistics for all nodes is retrieved |
 | `node environment [node-name]`    | Displays node environment: OS name version and JVM name and version|
-| `node shards [<node-name>]`         | Displays indices and shards located on node. If node name is not specified, information is printed for all nodes|
-| `node decomission <node-name>`    | Disables allocation for given node|
+| `node shards [<node-name>]`       | Displays indices and shards located on node. If node name is not specified, information is printed for all nodes|
+| `node decomission [<node-name>]`    | Disables allocation for given node. If node name is not specified then any cluster-wide allocation restrictions are removed|
 
 ### Document commands
 
@@ -111,11 +111,11 @@ of the document. Complete document with ";" |
         - [x] OS and JVM name and version
         - [x] Memory
         - [x] File system
-    - [ ] View indices and shards allocated to this node
+    - [x] View indices and shards allocated to this node
 - Cluster operations
     - Routing:
         - [x] Ensure node has all shards
-        - [ ] Decomission a node (ensure node has no shards)
+        - [x] Decomission a node (ensure node has no shards)
 
 ## Changing index settings
 

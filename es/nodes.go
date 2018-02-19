@@ -99,6 +99,7 @@ func (e Es) GetNodeStats(nodes []string) (*NodesStats, error) {
 	return stats, nil
 }
 
+// OSInfo contains information about OS
 type OSInfo struct {
 	Name    string `json:"name"`
 	Arch    string `json:"arch"`
@@ -106,6 +107,7 @@ type OSInfo struct {
 	CPUs    int    `json:"allocated_processors"`
 }
 
+// JVMInfo contains information about JVM running on the node
 type JVMInfo struct {
 	Version   string   `json:"version"`
 	VMName    string   `json:"vm_name"`
@@ -114,15 +116,18 @@ type JVMInfo struct {
 	Arguments []string `json:"input_arguments"`
 }
 
+// NodeEnvironmentInfo contains information about node runtime environment
 type NodeEnvironmentInfo struct {
 	OS  *OSInfo  `json:"os"`
 	JVM *JVMInfo `json:"jvm"`
 }
 
+// NodesEnvironmentInfo contains mapping between node names and their runtime environments
 type NodesEnvironmentInfo struct {
 	Nodes map[string]NodeEnvironmentInfo `json:"nodes"`
 }
 
+// GetNodeEnvironmentInfo retrieves runtime environment information for a list of nodes
 func (e Es) GetNodeEnvironmentInfo(nodeNames []string) (*NodesEnvironmentInfo, error) {
 	nodestr := strings.Join(nodeNames, ",")
 	var url string
@@ -145,4 +150,24 @@ func (e Es) GetNodeEnvironmentInfo(nodeNames []string) (*NodesEnvironmentInfo, e
 	}
 
 	return result, nil
+}
+
+// DecomissionNode excludes given nodes from shard allocation, allowing to shut down such nodes without loosing data
+func (e Es) DecomissionNode(node string) error {
+	if node != "" {
+		node = "\"" + node + "\""
+	} else {
+		node = "null"
+	}
+	postBody := fmt.Sprintf("{\"transient\":{\"cluster.routing.allocation.exclude._name\" : %s }}", node)
+
+	resp, err := e.putJSON("/_cluster/settings", postBody)
+
+	if err != nil {
+		return err
+	}
+
+	err = checkError(resp)
+
+	return err
 }
