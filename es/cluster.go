@@ -72,6 +72,17 @@ func (e Es) ListNodes() ([]*ShortNodeInfo, error) {
 	return result, nil
 }
 
+// GetSettings retrieves cluster settings
+func (e Es) GetSettings() (map[string]interface{}, error) {
+	body, err := e.getJSON("/_cluster/settings")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
 func (sni ShortNodeInfo) String() string {
 	return fmt.Sprintf("%s @ %s [%s]", sni.Name, sni.Host, sni.IP)
 }

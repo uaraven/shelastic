@@ -15,7 +15,7 @@ var (
 	Commands = []*ishell.Cmd{
 		Connect(),
 		Disconnect(),
-		Health(),
+		Cluster(),
 		List(),
 		Index(),
 		Snapshot(),
@@ -73,26 +73,6 @@ func Disconnect() *ishell.Cmd {
 			cprintln(c, "Disconnected from %s", context.ClusterName)
 			context = nil
 			c.SetPrompt("$> ")
-		},
-	}
-}
-
-// Health retrieves cluster health status
-func Health() *ishell.Cmd {
-	return &ishell.Cmd{
-		Name: "health",
-		Help: "Display cluster health information",
-		Func: func(c *ishell.Context) {
-			if context == nil {
-				errorMsg(c, errNotConnected)
-			} else {
-				h, err := context.Health()
-				if err != nil {
-					errorMsg(c, err.Error())
-				} else {
-					cprintln(c, h.String())
-				}
-			}
 		},
 	}
 }

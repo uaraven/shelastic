@@ -62,7 +62,7 @@ func print(c *ishell.Context, n *es.NodesStats) {
 
 	for nodeID := range n.Nodes {
 		cprintf(c, "\n%s", undr(nodeID))
-		cprintf(c, ": %v", nodeStatsToString(n.Nodes[nodeID]))
+		cprintln(c, ": %v", nodeStatsToString(n.Nodes[nodeID]))
 	}
 
 }
