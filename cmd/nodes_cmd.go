@@ -12,23 +12,45 @@ import (
 
 // Nodes wraps all nodes functions
 func Nodes() *ishell.Cmd {
-	snapshot := &ishell.Cmd{
+	nodes := &ishell.Cmd{
 		Name: "node",
 		Help: "Node operations",
 	}
 
-	snapshot.AddCmd(&ishell.Cmd{
+	nodes.AddCmd(&ishell.Cmd{
 		Name: "stats",
 		Help: "Get node statistics",
 		Func: getNodeStats,
 	})
 
-	return snapshot
+	nodes.AddCmd(&ishell.Cmd{
+		Name: "environment",
+		Help: "Get OS and JVM statistics",
+		Func: getEnvironmentStats,
+	})
+
+	nodes.AddCmd(&ishell.Cmd{
+		Name: "shards",
+		Help: "Show shard allocation for nodes",
+		Func: nodeShards,
+	})
+
+	nodes.AddCmd(&ishell.Cmd{
+		Name: "decomission",
+		Help: "Decomission node(s)",
+		Func: decomissionNodes,
+	})
+
+	return nodes
 }
 
 func getNodeStats(c *ishell.Context) {
 	if context != nil {
 		nodeStats, err := context.GetNodeStats(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
 		if err != nil {
 			errorMsg(c, err.Error())
 			return
@@ -56,15 +78,173 @@ func getNodeStats(c *ishell.Context) {
 	}
 }
 
+func getEnvironmentStats(c *ishell.Context) {
+	if context != nil {
+		nodeStats, err := context.GetNodeEnvironmentInfo(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		var nodeName string
+		if len(c.Args) > 0 {
+			nodeName = c.Args[0]
+		} else {
+			nodeName = ""
+		}
+		if nodeName != "" {
+			for node := range nodeStats.Nodes {
+				if node == nodeName {
+					cprintln(c, undr(node+":"))
+					cprintln(c, environmentToString(nodeStats.Nodes[node]))
+					return
+				}
+			}
+			errorMsg(c, "Node '%s' not found", nodeName)
+		} else {
+			printEnvironment(c, nodeStats.Nodes)
+		}
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
+func nodeShards(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+
+	var nodes []string
+
+	if len(c.Args) < 1 {
+		nodes = make([]string, len(context.Nodes))
+		i := 0
+		for n := range context.Nodes {
+			nodes[i] = context.Nodes[n].Name
+			i++
+		}
+	} else {
+		nodes = []string{c.Args[0]}
+	}
+	indices, err := context.ListIndices()
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+
+	for _, node := range nodes {
+		nodeIndexMap, err := buildNodeIndexInfo(node, indices)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		cprintf(c, undr(node))
+		cprintln(c, ":")
+		for index := range nodeIndexMap {
+			cprintln(c, "  Index '%s':", index)
+			for _, shard := range nodeIndexMap[index] {
+				var prim string
+				if shard.Primary {
+					prim = "Primary"
+				} else {
+					prim = "Replica"
+				}
+				cprintln(c, "    %d: %s, %s", shard.ID, shard.State, prim)
+			}
+		}
+	}
+
+}
+
+type shard struct {
+	ID      int
+	Primary bool
+	State   string
+}
+
+func buildNodeIndexInfo(node string, indices []*es.ShortIndexInfo) (map[string][]shard, error) {
+	nodeIndexInfo := make(map[string][]shard)
+	for _, idx := range indices {
+		shards, err := context.IndexShards(idx.Name)
+		if err != nil {
+			return nil, err
+		}
+		var nodeShards []shard
+		for _, sh := range shards {
+			for _, is := range sh.Shards {
+				if is.Node.Name == node {
+					shard := shard{
+						ID:      sh.ID,
+						Primary: is.Primary,
+						State:   is.State,
+					}
+					nodeShards = append(nodeShards, shard)
+				}
+			}
+		}
+		if len(nodeShards) > 0 {
+			nodeIndexInfo[idx.Name] = nodeShards
+		}
+	}
+	return nodeIndexInfo, nil
+}
+
+func decomissionNodes(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+
+	if len(c.Args) < 1 {
+		cprintln(c, "No node specified, removing any allocation restrictions")
+	}
+
+	nodes := strings.Join(c.Args, ",")
+
+	err := context.DecomissionNode(nodes)
+	if err != nil {
+		errorMsg(c, "Failed to modify cluster allocation: "+err.Error())
+	} else {
+		cprintln(c, "Ok")
+	}
+}
+
 // -- presentation functions ---
 
 func print(c *ishell.Context, n *es.NodesStats) {
-
 	for nodeID := range n.Nodes {
 		cprintf(c, "\n%s", undr(nodeID))
 		cprintln(c, ": %v", nodeStatsToString(n.Nodes[nodeID]))
 	}
+}
 
+func printEnvironment(c *ishell.Context, nodeEnv map[string]es.NodeEnvironmentInfo) {
+	for nodeID := range nodeEnv {
+		cprintf(c, "\n%s", undr(nodeID))
+		cprintln(c, ": %s", environmentToString(nodeEnv[nodeID]))
+	}
+}
+
+func environmentToString(n es.NodeEnvironmentInfo) string {
+	return pad(fmt.Sprintf("\n"+
+		"OS: %s\n"+
+		"JVM: %s", osToString(n.OS), jvmVerToString(n.JVM)), 2)
+}
+
+func osToString(os *es.OSInfo) string {
+	return pad(fmt.Sprintf("\n"+
+		"%s %s %s\n"+
+		"Allocated CPUs: %d", os.Name, os.Arch, os.Version, os.CPUs), 2)
+}
+
+func jvmVerToString(j *es.JVMInfo) string {
+	return pad(fmt.Sprintf("\n"+
+		"%s %s \n"+
+		"Vendor: %s", j.VMName, j.Version, j.VMVendor), 2)
 }
 
 func nodeStatsToString(n es.NodeStats) string {

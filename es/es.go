@@ -22,9 +22,9 @@ type Es struct {
 	esURL       *url.URL
 	client      *http.Client
 	ClusterName string
-	version     []int
+	Version     []int
 	aliases     map[string]string
-	nodes       map[string]*ShortNodeInfo
+	Nodes       map[string]*ShortNodeInfo
 	Debug       bool
 	ActiveIndex string
 }
@@ -61,7 +61,7 @@ func Connect(host string) (*Es, *PingResponse, error) {
 			}
 			ver = append(ver, vi)
 		}
-		es.version = ver
+		es.Version = ver
 		es.ClusterName = ping.ClusterName
 	} else {
 		return nil, nil, err
@@ -78,9 +78,9 @@ func Connect(host string) (*Es, *PingResponse, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	es.nodes = make(map[string]*ShortNodeInfo)
+	es.Nodes = make(map[string]*ShortNodeInfo)
 	for _, node := range nodes {
-		es.nodes[node.UUID] = node
+		es.Nodes[node.UUID] = node
 	}
 
 	return &es, ping, err

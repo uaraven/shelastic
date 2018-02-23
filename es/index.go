@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"shelastic/utils"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -233,7 +234,7 @@ func (e Es) Refresh(indexName string) error {
 // For ES version 1.x and 2.x this calls _optimize API
 func (e Es) ForceMerge(indexName string) error {
 	var apiName string
-	if e.version[0] < 5 {
+	if e.Version[0] < 5 {
 		apiName = "_optimize"
 	} else {
 		apiName = "_forcemerge"
@@ -248,8 +249,10 @@ func (e Es) ForceMerge(indexName string) error {
 	return err
 }
 
+type IndexShards []IndexShard
+
 //IndexShards returns list of shards allocated for a given index
-func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
+func (e Es) IndexShards(indexName string) (IndexShards, error) {
 	body, err := e.getJSON(fmt.Sprintf("/%s/_segments", indexName))
 
 	if err != nil {
@@ -265,7 +268,7 @@ func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
 
 	shards := body["indices"].(map[string]interface{})[indexName].(map[string]interface{})["shards"].(map[string]interface{})
 
-	var result []*IndexShard
+	var result []IndexShard
 	for shardIdx := range shards {
 		shard := shards[shardIdx].([]interface{})
 		var shardInfos = make([]*ShardInfo, len(shard))
@@ -277,7 +280,7 @@ func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
 			primary := routing["primary"].(bool)
 			nodeID := routing["node"].(string)
 
-			node, ok := e.nodes[nodeID]
+			node, ok := e.Nodes[nodeID]
 			if !ok {
 				return nil, fmt.Errorf("Failed to parse response: Unknown node %s", node)
 			}
@@ -295,13 +298,27 @@ func (e Es) IndexShards(indexName string) ([]*IndexShard, error) {
 			shardInfos[idx] = shardInfo
 		}
 		id, _ := strconv.Atoi(shardIdx)
-		indexShard := &IndexShard{
+		indexShard := IndexShard{
 			ID:     id,
 			Shards: shardInfos,
 		}
 		result = append(result, indexShard)
 	}
-	return result, nil
+	res := IndexShards(result)
+	sort.Sort(res)
+	return res, nil
+}
+
+func (is IndexShards) Len() int {
+	return len(is)
+}
+
+func (is IndexShards) Less(i, j int) bool {
+	return is[i].ID < is[j].ID
+}
+
+func (is IndexShards) Swap(i, j int) {
+	is[i], is[j] = is[j], is[i]
 }
 
 // IndexConfigure updates configuration for a given index. Configuration must be provided in YAML format
@@ -353,6 +370,25 @@ func (e Es) ResolveAndValidateIndex(indexName string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("Unknown index: %s", indexName)
+}
+
+func (e Es) MoveAllShardsToNode(index string, selector string, node string) error {
+	if node != "" {
+		node = "\"" + node + "\""
+	} else {
+		node = "null"
+	}
+	postBody := fmt.Sprintf("{\"index.routing.allocation.require.%s\": %s}", selector, node)
+
+	resp, err := e.putJSON(fmt.Sprintf("/%s/_settings", index), postBody)
+
+	if err != nil {
+		return err
+	}
+
+	err = checkError(resp)
+
+	return err
 }
 
 func (sii ShortIndexInfo) String() string {

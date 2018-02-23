@@ -73,6 +73,12 @@ func Index() *ishell.Cmd {
 		Func: configureIndex,
 	})
 
+	index.AddCmd(&ishell.Cmd{
+		Name: "restrict",
+		Help: "Move index shards to one node",
+		Func: restrictIndex,
+	})
+
 	return index
 }
 
@@ -248,36 +254,42 @@ func viewIndexShards(c *ishell.Context) {
 	}
 }
 
-func printIndexShardsByNode(c *ishell.Context, indexShards []*es.IndexShard) {
-	nodes := make(map[string][]*es.ShardInfo)
+func printIndexShardsByNode(c *ishell.Context, indexShards es.IndexShards) {
+
+	type ShardByNode struct {
+		ID    int
+		Shard *es.ShardInfo
+	}
+
+	nodes := make(map[string][]*ShardByNode)
 	for _, indexShard := range indexShards {
 		for _, shardInfo := range indexShard.Shards {
 			nodeID := shardInfo.Node.String()
 			if shardList, ok := nodes[nodeID]; ok {
-				shardList = append(shardList, shardInfo)
+				shardList = append(shardList, &ShardByNode{ID: indexShard.ID, Shard: shardInfo})
 				nodes[nodeID] = shardList
 			} else {
-				shardList := make([]*es.ShardInfo, 1)
-				shardList[0] = shardInfo
+				shardList := make([]*ShardByNode, 1)
+				shardList[0] = &ShardByNode{ID: indexShard.ID, Shard: shardInfo}
 				nodes[nodeID] = shardList
 			}
 		}
 	}
 	for nodeID := range nodes {
 		cprintln(c, "%s:", nodeID)
-		for idx, shard := range nodes[nodeID] {
+		for _, shard := range nodes[nodeID] {
 			var prim string
-			if shard.Primary {
+			if shard.Shard.Primary {
 				prim = "Primary"
 			} else {
 				prim = "Replica"
 			}
-			cprintln(c, "   %d: %s, %s", idx, shard.State, prim)
+			cprintln(c, "   %d: %s, %s", shard.ID, shard.Shard.State, prim)
 		}
 	}
 }
 
-func printIndexShardsByShard(c *ishell.Context, indexShards []*es.IndexShard) {
+func printIndexShardsByShard(c *ishell.Context, indexShards es.IndexShards) {
 	for _, indexShard := range indexShards {
 		cprintln(c, "Shard %d:", indexShard.ID)
 		for shardIdx, shardInfo := range indexShard.Shards {
@@ -318,7 +330,7 @@ func configureIndex(c *ishell.Context) {
 					payload[strings.TrimSpace(kv[0])] = kv[1]
 				}
 			}
-			c.SetPrompt(context.ClusterName + " $> ")
+			restorePrompt(context, c)
 		} else {
 			v := c.Args[2]
 			if v[0] == '(' && v[len(v)-1] == ')' {
@@ -335,5 +347,44 @@ func configureIndex(c *ishell.Context) {
 
 	} else {
 		errorMsg(c, errNotConnected)
+	}
+}
+
+const (
+	restrictUsage = "Usage: restrict <index> name|ip|host <target>"
+)
+
+func restrictIndex(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	if len(c.Args) < 2 {
+		errorMsg(c, "Not enough parameters."+restrictUsage)
+		return
+	}
+	index := c.Args[0]
+	selector := c.Args[1]
+	if selector != "name" && selector != "ip" && selector != "host" {
+		errorMsg(c, "Restriction can be done by node name, host name or by ip address."+restrictUsage)
+		return
+	}
+	var route string
+	if len(c.Args) == 3 {
+		route = c.Args[2]
+	} else {
+		route = ""
+	}
+
+	err := context.MoveAllShardsToNode(index, "_"+selector, route)
+
+	if err != nil {
+		errorMsg(c, err.Error())
+	} else {
+		if route == "" {
+			cprintln(c, "Restrictions removed")
+		} else {
+			cprintln(c, "Ok")
+		}
 	}
 }

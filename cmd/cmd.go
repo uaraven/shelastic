@@ -22,12 +22,13 @@ var (
 		Nodes(),
 		Debug(),
 		UseIndex(),
+		Document(),
 	}
 
 	cl   = color.New(color.FgBlue).SprintfFunc()
 	red  = color.New(color.FgRed).SprintFunc()
 	undr = color.New(color.Underline).SprintfFunc()
-	gr   = color.New(color.FgGreen).SprintfFunc()
+	gr   = color.New(color.FgCyan).SprintfFunc()
 )
 
 const (
@@ -173,4 +174,8 @@ func onConnect(es *es.Es, c *ishell.Context) {
 	}
 	cprintln(c, "Status: %s", colorw(health.Status))
 	c.SetPrompt(health.ClusterName + " $> ")
+}
+
+func restorePrompt(context *es.Es, c *ishell.Context) {
+	c.SetPrompt(context.ClusterName + " $> ")
 }
