@@ -249,6 +249,7 @@ func (e Es) ForceMerge(indexName string) error {
 	return err
 }
 
+// IndexShards is just a slice of IndexShard
 type IndexShards []IndexShard
 
 //IndexShards returns list of shards allocated for a given index
@@ -321,7 +322,7 @@ func (is IndexShards) Swap(i, j int) {
 	is[i], is[j] = is[j], is[i]
 }
 
-// IndexConfigure updates configuration for a given index. Configuration must be provided in YAML format
+// IndexConfigure updates configuration for a given index.
 func (e Es) IndexConfigure(indexName string, params map[string]string) error {
 	if len(params) == 0 {
 		return fmt.Errorf("No settings to update")
@@ -365,13 +366,14 @@ func (e Es) ResolveAndValidateIndex(indexName string) (string, error) {
 		}
 		for als := range e.aliases {
 			if indexName == e.aliases[als] {
-				return als, nil
+				return indexName, nil
 			}
 		}
 	}
 	return "", fmt.Errorf("Unknown index: %s", indexName)
 }
 
+// MoveAllShardsToNode changes index routing allocation to require given node
 func (e Es) MoveAllShardsToNode(index string, selector string, node string) error {
 	if node != "" {
 		node = "\"" + node + "\""

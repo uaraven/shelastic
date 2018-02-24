@@ -23,47 +23,47 @@ func Index() *ishell.Cmd {
 
 	view.AddCmd(&ishell.Cmd{
 		Name: "mapping",
-		Help: "View index mapping. Usage: index view mapping <index-name> [<doc> [<property>]]",
+		Help: "View index mapping. Usage: index mapping [--index <index-name>] [--doc <doc> [<property>]]",
 		Func: viewIndexMapping,
 	})
 
 	view.AddCmd(&ishell.Cmd{
 		Name: "settings",
-		Help: "View index settings. Usage: index view settings <index-name>",
+		Help: "View index settings. Usage: view settings [--index <index-name>]",
 		Func: viewIndexSettings,
 	})
 
 	view.AddCmd(&ishell.Cmd{
 		Name: "shards",
-		Help: "View index shards. Usage: index view shards <index-name>",
+		Help: "View index shards. Usage: view shards [--index <index-name>] [--mode by-node|by-shard]",
 		Func: viewIndexShards,
 	})
 
 	index.AddCmd(view)
 	index.AddCmd(&ishell.Cmd{
 		Name: "flush",
-		Help: "Flushes index data to storage and clears transaction log",
+		Help: "Flushes index data to storage and clears transaction log. Usage: flush [--index <index-name>]",
 		Func: flush,
 	})
 
 	index.AddCmd(view)
 	index.AddCmd(&ishell.Cmd{
 		Name: "clear-cache",
-		Help: "Clears index cache",
+		Help: "Clears index cache. Usage: clear-cache [--index <index-name>]",
 		Func: clearCache,
 	})
 
 	index.AddCmd(view)
 	index.AddCmd(&ishell.Cmd{
 		Name: "refresh",
-		Help: "Refreshes index, making all operations performed since last refresh available for search",
+		Help: "Refreshes index, making all operations performed since last refresh available for search. Usage: refresh [--index <index-name>]",
 		Func: refresh,
 	})
 
 	index.AddCmd(view)
 	index.AddCmd(&ishell.Cmd{
 		Name: "force-merge",
-		Help: "Allows to force merging of one or more indices through an API.",
+		Help: "Allows to force merging of one or more indices through an API. Usage: force-merge [--index <index-name>]",
 		Func: forceMerge,
 	})
 
@@ -75,7 +75,7 @@ func Index() *ishell.Cmd {
 
 	index.AddCmd(&ishell.Cmd{
 		Name: "restrict",
-		Help: "Move index shards to one node",
+		Help: "Move index shards to one node. " + restrictUsage,
 		Func: restrictIndex,
 	})
 
@@ -84,13 +84,24 @@ func Index() *ishell.Cmd {
 
 func flush(c *ishell.Context) {
 	if context != nil {
-		var index string
-		if len(c.Args) == 0 {
-			index = ""
-		} else {
-			index = c.Args[0]
+		type flushArgs struct {
+			documentSelectorData
+			Wait  bool `long:"wait" description:"Wait for flush to complete"`
+			Force bool `long:"force" description:"Force flush even if it is not required"`
 		}
-		err := context.Flush(index, false, false)
+
+		slct, err := parseDocumentArgsCustom(c.Args, &flushArgs{})
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		selector := slct.(*flushArgs)
+		if selector.Index == "" {
+			cprintln(c, "Flusing all indices")
+		} else {
+			cprintlist(c, "Flushing ", cy(selector.Index))
+		}
+		err = context.Flush(selector.Index, selector.Force, selector.Wait)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
@@ -103,13 +114,17 @@ func flush(c *ishell.Context) {
 
 func clearCache(c *ishell.Context) {
 	if context != nil {
-		var index string
-		if len(c.Args) == 0 {
-			index = ""
-		} else {
-			index = c.Args[0]
+		selector, err := parseDocumentArgs(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
 		}
-		err := context.ClearCache(index)
+		if selector.Index == "" {
+			cprintln(c, "Clearing cache for all indices")
+		} else {
+			cprintlist(c, "Clearing cache for ", cy(selector.Index))
+		}
+		err = context.ClearCache(selector.Index)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
@@ -122,13 +137,17 @@ func clearCache(c *ishell.Context) {
 
 func refresh(c *ishell.Context) {
 	if context != nil {
-		var index string
-		if len(c.Args) == 0 {
-			index = ""
-		} else {
-			index = c.Args[0]
+		selector, err := parseDocumentArgs(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
 		}
-		err := context.Refresh(index)
+		if selector.Index == "" {
+			cprintln(c, "Refreshing all indices")
+		} else {
+			cprintlist(c, "Refreshing ", cy(selector.Index))
+		}
+		err = context.Refresh(selector.Index)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
@@ -141,13 +160,17 @@ func refresh(c *ishell.Context) {
 
 func forceMerge(c *ishell.Context) {
 	if context != nil {
-		var index string
-		if len(c.Args) == 0 {
-			index = ""
-		} else {
-			index = c.Args[0]
+		selector, err := parseDocumentArgs(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
 		}
-		err := context.ForceMerge(index)
+		if selector.Index == "" {
+			cprintln(c, "Merging all indices")
+		} else {
+			cprintlist(c, "Merging ", cy(selector.Index))
+		}
+		err = context.ForceMerge(selector.Index)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
@@ -160,25 +183,22 @@ func forceMerge(c *ishell.Context) {
 
 func viewIndexMapping(c *ishell.Context) {
 	if context != nil {
-		indexName := ""
-		docType := ""
-		property := ""
 
-		if len(c.Args) >= 1 {
-			indexName = c.Args[0]
-		}
-		if len(c.Args) >= 2 {
-			docType = c.Args[1]
-		}
-		if len(c.Args) >= 3 {
-			property = c.Args[2]
-		}
-		if indexName == "" {
-			errorMsg(c, "Index name not specified")
+		selector, err := parseDocumentArgs(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
 			return
 		}
+		if selector.Index == "" {
+			errorMsg(c, errIndexNotSelected)
+			return
+		}
+		var property string
+		if len(selector.Args) > 0 {
+			property = selector.Args[0]
+		}
 
-		result, err := context.IndexViewMapping(indexName, docType, property)
+		result, err := context.IndexViewMapping(selector.Index, selector.Document, property)
 		if err != nil {
 			errorMsg(c, err.Error())
 			return
@@ -198,13 +218,12 @@ func viewIndexMapping(c *ishell.Context) {
 func viewIndexSettings(c *ishell.Context) {
 	if context != nil {
 
-		if len(c.Args) < 1 {
-			errorMsg(c, "Index name not specified")
+		index := selectIndex(c)
+		if index == "" {
 			return
 		}
-		indexName := c.Args[0]
 
-		result, err := context.IndexViewSettings(indexName)
+		result, err := context.IndexViewSettings(index)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
@@ -225,24 +244,28 @@ func viewIndexSettings(c *ishell.Context) {
 func viewIndexShards(c *ishell.Context) {
 	if context != nil {
 
-		if len(c.Args) < 1 {
-			errorMsg(c, "Index name not specified")
+		type shardsArgs struct {
+			documentSelectorData
+			Mode string `long:"mode" choice:"by-shard" choice:"by-node" default:"by-node" description:"Display result grouped either by node or by shard"`
+		}
+
+		sel, err := parseDocumentArgsCustom(c.Args, &shardsArgs{})
+		if err != nil {
+			errorMsg(c, err.Error())
 			return
 		}
-		indexName := c.Args[0]
+		selector := sel.(*shardsArgs)
 
-		var mode string
-		if len(c.Args) > 1 && strings.ToLower(c.Args[1]) == "by-shard" {
-			mode = "shard"
-		} else {
-			mode = "node"
+		if selector.Index == "" {
+			errorMsg(c, errIndexNotSelected)
+			return
 		}
 
-		result, err := context.IndexShards(indexName)
+		result, err := context.IndexShards(selector.Index)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
-			if mode == "node" {
+			if selector.Mode == "by-node" {
 				printIndexShardsByNode(c, result)
 			} else {
 				printIndexShardsByShard(c, result)
@@ -252,6 +275,26 @@ func viewIndexShards(c *ishell.Context) {
 	} else {
 		errorMsg(c, errNotConnected)
 	}
+}
+
+func selectIndex(c *ishell.Context) string {
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return ""
+	}
+	var index string
+	if selector.Index == "" && len(selector.Args) > 0 {
+		index = selector.Args[0]
+	} else {
+		index = selector.Index
+	}
+
+	if index == "" {
+		errorMsg(c, errIndexNotSelected)
+		return ""
+	}
+	return index
 }
 
 func printIndexShardsByNode(c *ishell.Context, indexShards es.IndexShards) {
@@ -308,20 +351,23 @@ func printIndexShardsByShard(c *ishell.Context, indexShards es.IndexShards) {
 
 func configureIndex(c *ishell.Context) {
 	if context != nil {
-		if len(c.Args) < 1 {
-			errorMsg(c, "Index name not specified")
+
+		selector, err := parseDocumentArgs(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
 			return
 		}
-		indexName := c.Args[0]
+		if selector.Index == "" {
+			errorMsg(c, errIndexNotSelected)
+			return
+		}
 
 		var payload map[string]string
-		if len(c.Args) < 3 {
+		if len(selector.Args) == 0 {
 			payload = make(map[string]string)
-			cprintln(c, "Enter configuration parameters, one per line finish with empty line")
+			cprintln(c, "Enter configuration parameters, one per line finish with ';'")
 			c.SetPrompt(">>> ")
-			lines := strings.Split(c.ReadMultiLinesFunc(func(ln string) bool {
-				return len(ln) != 0
-			}), "\n")
+			lines := strings.Split(c.ReadMultiLines(";"), "\n")
 			for _, ln := range lines {
 				ln = strings.TrimSpace(ln)
 				kv := strings.Split(ln, ":")
@@ -332,13 +378,13 @@ func configureIndex(c *ishell.Context) {
 			}
 			restorePrompt(context, c)
 		} else {
-			v := c.Args[2]
+			v := c.Args[1]
 			if v[0] == '(' && v[len(v)-1] == ')' {
 				v = "\"" + v[1:len(v)-1] + "\""
 			}
-			payload = map[string]string{c.Args[1]: v}
+			payload = map[string]string{c.Args[0]: v}
 		}
-		err := context.IndexConfigure(indexName, payload)
+		err = context.IndexConfigure(selector.Index, payload)
 		if err != nil {
 			errorMsg(c, err.Error())
 		} else {
@@ -350,33 +396,32 @@ func configureIndex(c *ishell.Context) {
 	}
 }
 
-const (
-	restrictUsage = "Usage: restrict <index> name|ip|host <target>"
-)
+const restrictUsage = "Usage: restrict [--index <index-name>] name|ip|host <target>"
 
 func restrictIndex(c *ishell.Context) {
 	if context == nil {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
-	if len(c.Args) < 2 {
+	selector, err := parseDocumentArgs(c.Args)
+
+	if len(selector.Args) < 1 {
 		errorMsg(c, "Not enough parameters."+restrictUsage)
 		return
 	}
-	index := c.Args[0]
-	selector := c.Args[1]
-	if selector != "name" && selector != "ip" && selector != "host" {
+	mode := selector.Args[0]
+	if mode != "name" && mode != "ip" && mode != "host" {
 		errorMsg(c, "Restriction can be done by node name, host name or by ip address."+restrictUsage)
 		return
 	}
 	var route string
-	if len(c.Args) == 3 {
-		route = c.Args[2]
+	if len(selector.Args) == 2 {
+		route = selector.Args[1]
 	} else {
 		route = ""
 	}
 
-	err := context.MoveAllShardsToNode(index, "_"+selector, route)
+	err = context.MoveAllShardsToNode(selector.Index, "_"+mode, route)
 
 	if err != nil {
 		errorMsg(c, err.Error())
