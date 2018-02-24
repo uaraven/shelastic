@@ -6,16 +6,6 @@ import (
 	ishell "gopkg.in/abiosoft/ishell.v2"
 )
 
-var (
-	errIndexNotSelected = "No index selected. Select index using 'use <index-name>'"
-)
-
-type documentSelector struct {
-	index    string
-	document string
-	rest     []string
-}
-
 // UseIndex selects an index to use with document operations
 func UseIndex() *ishell.Cmd {
 
@@ -28,9 +18,18 @@ func UseIndex() *ishell.Cmd {
 			} else {
 				if len(c.Args) < 1 {
 					if context.ActiveIndex != "" {
-						cprintln(c, "Using index %s", gr(context.ActiveIndex))
+						cprintlist(c, "Using index ", cy(context.ActiveIndex))
 					} else {
-						errorMsg(c, "Index name not specified")
+						cprintln(c, "No index is in use")
+					}
+					return
+				}
+				if c.Args[0] == "--" {
+					if context.ActiveIndex != "" {
+						cprintlist(c, "Index ", cy(context.ActiveIndex), " is no longer in use")
+						context.ActiveIndex = ""
+					} else {
+						cprintln(c, "No index is in use")
 					}
 					return
 				}
@@ -41,9 +40,9 @@ func UseIndex() *ishell.Cmd {
 				}
 				context.ActiveIndex = s
 				if s != c.Args[0] {
-					cprintln(c, "For alias %s selected index %s", c.Args[0], gr(s))
+					cprintlist(c, "For alias ", cyb(c.Args[0]), " selected index ", cy(s))
 				} else {
-					cprintln(c, "Selected index %s", s)
+					cprintlist(c, "Selected index ", cy(s))
 				}
 			}
 		},
@@ -60,43 +59,43 @@ func Document() *ishell.Cmd {
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "list",
-		Help: "List documents in index",
+		Help: "List documents in index. Usage: list [--index <index-name>]",
 		Func: showDocs,
 	})
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "properties",
-		Help: "Show properties of the document. Usage: properties [<index>] <type>",
+		Help: "Show properties of the document. Usage: properties [--index <index-name>] [--doc] <type>",
 		Func: showProperties,
 	})
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "get",
-		Help: "Retrieves document by its id. Usage: get [<index>] <type> <id>",
+		Help: "Retrieves document by its id. Usage: get [--index <index-name>] --doc <type> <id>",
 		Func: getDocument,
 	})
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "put",
-		Help: "Inserts/updates document. Usage: put[<index>]  <type> <id>",
+		Help: "Inserts/updates document. Usage: put [--index <index-name>] --doc <type> <id>",
 		Func: putDocument,
 	})
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "delete",
-		Help: "Deletes document by its id. Usage: delete [<index>]  <type> <id>",
+		Help: "Deletes document by its id. Usage: delete [--index <index-name>] --doc <type> <id>",
 		Func: deleteDocument,
 	})
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "search",
-		Help: "Peforms simple search. Usage: search [<index>] [<types>] <search string>",
+		Help: "Peforms simple search. Usage: search [--index <index-name>] [--doc <types>] <search string>",
 		Func: searchDocument,
 	})
 
 	document.AddCmd(&ishell.Cmd{
 		Name: "query",
-		Help: "Peforms search using query DSL. Usage: query [<index>]",
+		Help: "Peforms search using query DSL. Usage: query [--index <index-name>]",
 		Func: queryDocument,
 	})
 
@@ -108,13 +107,17 @@ func showDocs(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector := parseArguments(c.Args, 0)
-	if selector.index == "" {
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	if selector.Index == "" {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
 
-	docs, err := context.ListDocuments(selector.index)
+	docs, err := context.ListDocuments(selector.Index)
 
 	if err != nil {
 		errorMsg(c, err.Error())
@@ -130,22 +133,30 @@ func showProperties(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector := parseArguments(c.Args, 1)
-	if selector.index == "" {
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	if selector.Index == "" {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
 	var doc string
 	if context.Version[0] > 6 {
 		doc = "_doc"
-	} else if selector.document == "" {
-		errorMsg(c, "Please specify document name")
-		return
-	} else {
-		doc = selector.document
+	} else if selector.Document != "" {
+		doc = selector.Document
+	} else if len(selector.Args) > 0 {
+		doc = selector.Args[0]
 	}
 
-	props, err := context.ListProperties(selector.index, doc)
+	if doc == "" {
+		errorMsg(c, "Please specify document name using --doc <document-name> parameter")
+		return
+	}
+
+	props, err := context.ListProperties(selector.Index, doc)
 
 	if err != nil {
 		errorMsg(c, err.Error())
@@ -161,16 +172,20 @@ func getDocument(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector := parseArguments(c.Args, 2)
-	if selector.index == "" {
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	if selector.Index == "" {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
-	if len(selector.rest) == 0 || selector.document == "" {
-		errorMsg(c, "Not enough parameters. Usage: get [index] <doc-type> <id>")
+	if len(selector.Args) == 0 || selector.Document == "" {
+		errorMsg(c, "Not enough parameters. Usage: get [--index <index-name>] --doc <doc-type> <id>")
 		return
 	}
-	doc, err := context.GetDocument(selector.index, selector.document, selector.rest[0])
+	doc, err := context.GetDocument(selector.Index, selector.Document, selector.Args[0])
 	if err != nil {
 		errorMsg(c, err.Error())
 		return
@@ -183,13 +198,17 @@ func putDocument(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector := parseArguments(c.Args, 2)
-	if selector.index == "" {
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	if selector.Index == "" {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
-	if len(selector.rest) == 0 || selector.document == "" {
-		errorMsg(c, "Not enough parameters. Usage: get [index] <doc-type> <id>")
+	if len(selector.Args) == 0 || selector.Document == "" {
+		errorMsg(c, "Not enough parameters. Usage: put [--index <index-name>] --doc <doc-type> <id>")
 		return
 	}
 	cprintln(c, "Enter document body, ending with ';':")
@@ -197,7 +216,7 @@ func putDocument(c *ishell.Context) {
 	json := c.ReadMultiLines(";")
 	json = json[:len(json)-1]
 	restorePrompt(context, c)
-	response, err := context.PutDocument(selector.index, selector.document, selector.rest[0], json)
+	response, err := context.PutDocument(selector.Index, selector.Document, selector.Args[0], json)
 	if err != nil {
 		errorMsg(c, err.Error())
 		return
@@ -210,16 +229,20 @@ func deleteDocument(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector := parseArguments(c.Args, 2)
-	if selector.index == "" {
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	if selector.Index == "" {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
-	if len(selector.rest) == 0 || selector.document == "" {
-		errorMsg(c, "Not enough parameters. Usage: delete [index] <doc-type> <id>")
+	if len(selector.Args) == 0 || selector.Document == "" {
+		errorMsg(c, "Not enough parameters. Usage: delete [--index <index-name>] --doc <doc-type> <id>")
 		return
 	}
-	err := context.DeleteDocument(selector.index, selector.document, selector.rest[0])
+	err = context.DeleteDocument(selector.Index, selector.Document, selector.Args[0])
 	if err != nil {
 		errorMsg(c, err.Error())
 		return
@@ -232,16 +255,20 @@ func searchDocument(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector := parseArguments(c.Args, 2)
-	if selector.index == "" {
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	if selector.Index == "" {
 		errorMsg(c, errIndexNotSelected)
 		return
 	}
-	if len(selector.rest) == 0 {
-		errorMsg(c, "Not enough parameters. Usage: search [index] [<doc-types>] <search query>")
+	if len(selector.Args) == 0 {
+		errorMsg(c, "Not enough parameters. Usage: search [--index <index-name>] [--doc <doc-types>] <search query>")
 		return
 	}
-	sr, err := context.Search(selector.index, selector.document, selector.rest[0])
+	sr, err := context.Search(selector.Index, selector.Document, selector.Args[0])
 	if err != nil {
 		errorMsg(c, err.Error())
 		return
@@ -257,7 +284,12 @@ func queryDocument(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector := parseArguments(c.Args, 0)
+	selector, err := parseDocumentArgs(c.Args)
+
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
 
 	cprintln(c, "Enter query, ending with ';'")
 	c.SetPrompt(">>> ")
@@ -280,7 +312,7 @@ func queryDocument(c *ishell.Context) {
 		return
 	}
 
-	sr, err := context.Query(selector.index, string(bytes))
+	sr, err := context.Query(selector.Index, string(bytes))
 	if err != nil {
 		errorMsg(c, err.Error())
 		return
@@ -288,30 +320,5 @@ func queryDocument(c *ishell.Context) {
 	cprintln(c, "Total hits: %d\n", sr.Total)
 	for _, hit := range sr.Hits {
 		cprintln(c, hit)
-	}
-}
-
-// parseArguments parses list of arguments into index name, document type and the rest or args
-// If 3 or more parameters passed, first is treated as index name, second is document
-// If less than 3 parameters passed, then first is treated as document name and index name is retrieved from context.ActiveIndex
-func parseArguments(args []string, expectedArgs int) *documentSelector {
-	var index string
-	var doc string
-	if len(args) > expectedArgs {
-		index = args[0]
-		args = args[1:]
-	} else {
-		index = context.ActiveIndex
-	}
-	if len(args) == expectedArgs && expectedArgs > 0 {
-		doc = args[0]
-		args = args[1:]
-	} else {
-		doc = ""
-	}
-	return &documentSelector{
-		index:    index,
-		document: doc,
-		rest:     args,
 	}
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"reflect"
 	"shelastic/es"
 
 	"github.com/fatih/color"
@@ -25,10 +26,11 @@ var (
 		Document(),
 	}
 
-	cl   = color.New(color.FgBlue).SprintfFunc()
+	bl   = color.New(color.FgBlue).SprintfFunc()
 	red  = color.New(color.FgRed).SprintFunc()
 	undr = color.New(color.Underline).SprintfFunc()
-	gr   = color.New(color.FgCyan).SprintfFunc()
+	cy   = color.New(color.FgCyan).SprintfFunc()
+	cyb  = color.New(color.FgHiCyan).SprintfFunc()
 )
 
 const (
@@ -146,11 +148,24 @@ func Debug() *ishell.Cmd {
 }
 
 func cprintln(c *ishell.Context, format string, params ...interface{}) {
-	c.Println(cl(format, params...))
+	c.Println(bl(format, params...))
 }
 
 func cprintf(c *ishell.Context, format string, params ...interface{}) {
-	c.Printf(cl(format, params...))
+	c.Printf(bl(format, params...))
+}
+
+// cprintlist prints list of parameters on a line. If parameter is a function it is printed as is, otherwise it is wrapped in default color
+// After all items are printed, new line is printed
+func cprintlist(c *ishell.Context, params ...interface{}) {
+	for _, item := range params {
+		if reflect.TypeOf(item).Kind() == reflect.Func {
+			c.Print(item)
+		} else {
+			c.Print(bl("%v", item))
+		}
+	}
+	c.Println()
 }
 
 func errorMsg(c *ishell.Context, message string, params ...interface{}) {
