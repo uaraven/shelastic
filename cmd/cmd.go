@@ -31,11 +31,23 @@ var (
 	undr = color.New(color.Underline).SprintfFunc()
 	cy   = color.New(color.FgCyan).SprintfFunc()
 	cyb  = color.New(color.FgHiCyan).SprintfFunc()
+	gre  = color.New(color.FgGreen).SprintFunc()
+	yel  = color.New(color.FgYellow).SprintFunc()
 )
 
 const (
 	errNotConnected = "Not connected to Elasticsearch cluster"
 )
+
+// Settings contains shelastic shell settings configured through command line parameters
+type Settings struct {
+	NoColor bool `short:"n" long:"no-color" description:"Do not use colors in terminal"`
+}
+
+// Initialize sets up internal state of the shell. Must be called before starting the shell
+func Initialize(settings *Settings) {
+	color.NoColor = settings.NoColor
+}
 
 // Connect performs connection to Elasticsearh cluster
 func Connect() *ishell.Cmd {
@@ -181,11 +193,11 @@ func onConnect(es *es.Es, c *ishell.Context) {
 	var colorw func(...interface{}) string
 	switch health.Status {
 	case "yellow":
-		colorw = color.New(color.FgYellow).SprintFunc()
+		colorw = yel
 	case "red":
 		colorw = red
 	case "green":
-		colorw = color.New(color.FgGreen).SprintFunc()
+		colorw = gre
 	}
 	cprintln(c, "Status: %s", colorw(health.Status))
 	c.SetPrompt(health.ClusterName + " $> ")

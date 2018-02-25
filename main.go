@@ -3,6 +3,7 @@ package main
 import (
 	"shelastic/cmd"
 
+	flags "github.com/jessevdk/go-flags"
 	"gopkg.in/abiosoft/ishell.v2"
 )
 
@@ -25,6 +26,13 @@ func main() {
 		shell.AddCmd(c)
 	}
 
-	// run shell
-	shell.Start()
+	settings := &cmd.Settings{}
+
+	_, err := flags.Parse(settings)
+
+	if err == nil {
+		cmd.Initialize(settings)
+		shell.Start()
+	}
+
 }
