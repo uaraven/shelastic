@@ -75,8 +75,19 @@ Even when an index is in use, explicit index name may be supplied to any documen
 | `document get [--index <index-name>]--doc  <doc-name> <id>`    | Retrieves document by id |
 | `document delete [--index <index-name>] --doc <doc-name> <id>` | Deletes document by id| 
 | `document search [--index <index-name>] [--doc <doc-names>] <query>` | Search for query in `<doc-names>`. Document name can be omitted.|
-| `document query [--index <index-name>]`  | Search using Query DSL. Query must be entered as JSON at the prompt. This will always update "size" parameter to 20|
+| `document query [--index <index-name>] [--doc <doc-name>]`  | Search using Query DSL. Query must be entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}` This will always update "size" parameter to 20|
 | `document put [--index <index-name>] --doc <doc-name> id`      | Upserts document into `index.doc-name` with id == id. This command will start multi-line editor to enter JSON of the document. Complete document with ";". Number of documents returned with this query will be limited to 20. If you need more results use `export` command |
+
+### Bulk export/import commands
+
+All bulk commands can accept index name as argument to `--index` option. By using 'use index-name' command one can "open" an index and it will be implicitly used in all document commands.
+
+Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
+
+| Command                           | Description                                                                                    |
+|:----------------------------------|:-----------------------------------------------------------------------------------------------|
+| `bulk export [--index <index-name>] [--doc <doc-type>] <filename>` | Exports all records from a search into a file. Each line in file will contain JSON with one search result. Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}` |
+
 
 ## Details
 

@@ -24,6 +24,7 @@ var (
 		Debug(),
 		UseIndex(),
 		Document(),
+		Bulk(),
 	}
 
 	bl   = color.New(color.FgBlue).SprintfFunc()
@@ -204,5 +205,9 @@ func onConnect(es *es.Es, c *ishell.Context) {
 }
 
 func restorePrompt(context *es.Es, c *ishell.Context) {
-	c.SetPrompt(context.ClusterName + " $> ")
+	if context.ActiveIndex != "" {
+		c.SetPrompt(fmt.Sprintf("%s.%s $> ", context.ClusterName, context.ActiveIndex))
+	} else {
+		c.SetPrompt(fmt.Sprintf("%s $> ", context.ClusterName))
+	}
 }

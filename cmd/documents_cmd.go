@@ -16,6 +16,7 @@ func UseIndex() *ishell.Cmd {
 			if context == nil {
 				errorMsg(c, errNotConnected)
 			} else {
+				defer restorePrompt(context, c)
 				if len(c.Args) < 1 {
 					if context.ActiveIndex != "" {
 						cprintlist(c, "Using index ", cy(context.ActiveIndex))
@@ -31,6 +32,7 @@ func UseIndex() *ishell.Cmd {
 					} else {
 						cprintln(c, "No index is in use")
 					}
+
 					return
 				}
 				s, err := context.ResolveAndValidateIndex(c.Args[0])
@@ -292,10 +294,20 @@ func queryDocument(c *ishell.Context) {
 	}
 
 	cprintln(c, "Enter query, ending with ';'")
+	defer restorePrompt(context, c)
 	c.SetPrompt(">>> ")
 	q := c.ReadMultiLines(";")
-	q = q[:len(q)-1]
-	restorePrompt(context, c)
+	if len(q) > 0 {
+		q = q[:len(q)-1]
+	} else {
+		errorMsg(c, "Invalid query")
+		return
+	}
+
+	if len(q) == 0 {
+		q = "{\"query\": {\"match_all\":{}}}"
+		cprintln(c, "Using match all query")
+	}
 
 	var body map[string]interface{}
 
@@ -312,7 +324,7 @@ func queryDocument(c *ishell.Context) {
 		return
 	}
 
-	sr, err := context.Query(selector.Index, string(bytes))
+	sr, err := context.Query(selector.Index, selector.Document, string(bytes))
 	if err != nil {
 		errorMsg(c, err.Error())
 		return

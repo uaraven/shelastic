@@ -195,11 +195,11 @@ func (e Es) Search(index string, doc string, query string) (*SearchResult, error
 }
 
 //Query function implements ES request body search
-func (e Es) Query(index string, query string) (*SearchResult, error) {
-	if index != "" {
-		index = "/" + index
+func (e Es) Query(index string, doc string, query string) (*SearchResult, error) {
+	if doc != "" {
+		doc = "/" + doc
 	}
-	body, err := e.getJSONWithBody(fmt.Sprintf("%s/_search", index), query)
+	body, err := e.getJSONWithBody(fmt.Sprintf("%s%s/_search", index, doc), query)
 
 	if err != nil {
 		return nil, err
