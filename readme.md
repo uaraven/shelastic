@@ -33,11 +33,11 @@ Select index to be used for document manipulations. If no `<index-name>` is spec
 
     _debug
 
-Toggle HTTP output. Use for bug reporting purposes
+Toggle debug output (mostly HTTP traces). Use for bug reporting purposes
 
 ### Index commads
 
-All index commands can accept index name as argument to `--index` option. By using 'use index-name' command one can "open" an index and it will be implicitly used in all document commands.
+All index commands can accept index name as argument to `--index` option. By using `use index-name` command one can "open" an index and it will be implicitly used in all document commands.
 
 Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
 
@@ -68,7 +68,7 @@ View index shards. If `--mode` option is not specified, `by-shard` is used
     index restrict [--index <index-name> selector [<target>]
 Moves all shards to given node by selector. Selector can be one of `name`, `host` or `ip`. If `<target>` is not specified, then restriction is removed
 
-    index configure [--index <index-name>] <config-item>
+    index configure [--index <index-name>]
 Sets index setting. 
 
 At prompt enter index configuration line by line. Each line of configuration consists of configuration key and value separated by colon. Semicolon indicates end of entry
