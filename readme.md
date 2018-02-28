@@ -10,14 +10,30 @@ This project is not affiliated with Elastic in any way.
 
 ### General commands
 
-| Command                           | Description                                                                                    |
-|:---------------------------------:|:-----------------------------------------------------------------------------------------------|
-| `connect [host]`                  | Connects to ES cluster. If host name is omitted, tries to connect to localhost                 |
-| `disconnect`                      | Disconnects from ES cluster. You need to disconnect before connecting to another cluster       |
-| `list indices`                    | Lists indices on the cluster |
-| `list nodes`                      | Lists nodes of the cluster. Each node is displayed in format `<name> @ <hostname> [<ip-address>]` |
-| `use <index-name>`                | Select index to be used for document manipulations. If no `<index-name>` is specified it will display index that is currently in use. To stop using index pass `--` argument to `use`, as in `use --` |
-| `_debug`                          | Toggle HTTP output. Use for bug reporting purposes |
+    connect [host]
+
+Connects to ES cluster. If host name is omitted, tries to connect to localhost
+
+    disconnect
+    
+Disconnects from ES cluster. You need to disconnect before connecting to another cluster
+
+    list indices
+    
+Lists indices in the cluster
+
+    list nodes
+    
+Lists nodes of the cluster. Each node is displayed in format `<name> @ <hostname> [<ip-address>]`
+
+
+    use <index-name>
+
+Select index to be used for document manipulations. If no `<index-name>` is specified it will display index that is currently in use. To stop using index pass `--` argument to `use`, as in `use --`
+
+    _debug
+
+Toggle HTTP output. Use for bug reporting purposes
 
 ### Index commads
 
@@ -28,39 +44,78 @@ Even when an index is in use, explicit index name may be supplied to any documen
 Some of the commands (like `refresh` or `flush`) will be applied to all indices if no index name is specified. If an index is selected with `use` command it 
 first have to be deselected with `use --` for such commands to be applied to all indices in the cluster.
 
-| Command                            | Description                                                                                    |
-|:-----------------------------------|:-----------------------------------------------------------------------------------------------|
-| `index clear-cache [--index <index-name>]` | Clears cache of given index. If no index is in use then cache for all indices is cleared|
-| `index flush  [--index <index-name>] [--force] [--wait]`   | Flushes index. If no index is in use then flushes all indices. Supported options: `--force` - forces flush even if it is not needed; `--wait` - waits for other ongoing flush operation to complete |
-| `index refresh [--index <index-name>]` | Refreshes index, making all operations performed since last refresh available for search. If no index is in use then all indices are refreshed|
-| `index force-merge [--index <index-name>]` | Forces merging of one or more indices through an API. For ES version 1.x and 2.x this calls _Optimize_ API. If no index is in use then all indices are forced to merge |
-| `index view mappings [--index <index-name>] [--doc <doc-name>] [property-name]` | View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability|
-| `index view settings [--index <index-name>]` | View index settings|
-| `index view shards [--index <index-name>] [--mode by-node | by-shard]` | View index shards. If `--mode` option is not specified, `by-shard` is used|
-| `index configure [--index <index-name>] <config-item>`        | Set index setting. See below for syntax |
-| `index restrict [--index <index-name> selector [<target>]`    | moves all shards to given node by selector. Selector can be one of `name`, `host` or `ip`. If `<target>` is not specified, then restriction is removed |
+    index clear-cache [--index <index-name>]   
+Clears cache of given index. If no index is in use then cache for all indices is cleared
+
+    index flush  [--index <index-name>] [--force] [--wait]
+Flushes index. If no index is in use then flushes all indices. Supported options: `--force` - forces flush even if it is not needed; `--wait` - waits for other ongoing flush operation to complete
+
+    index refresh [--index <index-name>]
+Refreshes index, making all operations performed since last refresh available for search. If no index is in use then all indices are refreshed
+
+    index force-merge [--index <index-name>]
+Forces merging of one or more indices through an API. For ES version 1.x and 2.x this calls _Optimize_ API. If no index is in use then all indices are forced to merge
+
+    index view mappings [--index <index-name>] [--doc <doc-name>] [property-name]
+View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability
+
+    index view settings [--index <index-name>]    
+View index settings
+
+    index view shards [--index <index-name>] [--mode by-node | by-shard]
+View index shards. If `--mode` option is not specified, `by-shard` is used
+
+    index restrict [--index <index-name> selector [<target>]
+Moves all shards to given node by selector. Selector can be one of `name`, `host` or `ip`. If `<target>` is not specified, then restriction is removed
+
+    index configure [--index <index-name>] <config-item>
+Sets index setting. 
+
+At prompt enter index configuration line by line. Each line of configuration consists of configuration key and value separated by colon. Semicolon indicates end of entry
+
+        > index configure index-name
+        Enter configuration parameters, one per line. Finish with ;
+        >>> index.routing.allocation.require._name: "host1"
+        >>> index.routing.allocation.require._ip:  "host2"
+        >>>;
 
 
 ### Snapshot commands
 
-| Command                           | Description                                                                                    |
-|:----------------------------------|:-----------------------------------------------------------------------------------------------|
-| `snapshot repo list`              | Lists all configured snapshot repositories with their settings|
-| `snapshot repo register <name> <type> <settings>` | Registers new repository of type `<type>` and named `<name>`. Repository settings can be passed as key-value pairs on command line. Each key and value must be separated by space|
-| `snapshot repo verify <name>`     | Verifies repository |
-| `snapshot create <repo> <name>`   | Creates snapshot named `<name>` in repository `<repo>` |
-| `snapshot info <repo> [<name>]`   | Retrieves snapshot information from repository `<repo>`. If snapshot `<name>` is specified then its information is retrieved, otherwise information for all snapshots in the repository is printed|
-| `snapshot restore <repo> <name>`  | Restores snapshot named `<name>` from repository `<repo>` |
-| `snapshot delete <repo> <name>`   | Deletes snapshot named `<name>` from repository `<repo>` |
+    snapshot repo list
+Lists all configured snapshot repositories with their settings
+
+    snapshot repo register <name> <type> <settings>
+Registers new repository of type `<type>` and named `<name>`. Repository settings can be passed as key-value pairs on command line. Each key and value must be separated by space
+
+    snapshot repo verify <name>
+Verifies repository
+
+    snapshot create <repo> <name>
+Creates snapshot named `<name>` in repository `<repo>`
+
+    snapshot info <repo> [<name>]
+Retrieves snapshot information from repository `<repo>`. If snapshot `<name>` is specified then its information is retrieved, otherwise information for all snapshots in the repository is printed
+
+    snapshot restore <repo> <name>
+Restores snapshot named `<name>` from repository `<repo>`
+
+    snapshot delete <repo> <name>
+Deletes snapshot named `<name>` from repository `<repo>`
 
 ### Node commands
 
-| Command                           | Description                                                                                    |
-|:----------------------------------|:-----------------------------------------------------------------------------------------------|
-| `node stats [node-name]`          | Displays node statistics. If `node-name` is specified then only this node stats are displayed otherwise statistics for all nodes is retrieved |
-| `node environment [node-name]`    | Displays node environment: OS name version and JVM name and version|
-| `node shards [<node-name>]`       | Displays indices and shards located on node. If node name is not specified, information is printed for all nodes|
-| `node decomission [<node-name>]`  | Disables allocation for given node. If node name is not specified then any cluster-wide allocation restrictions are removed|
+    node stats [node-name]
+Displays node statistics. If `node-name` is specified then only this node stats are displayed otherwise statistics for all nodes is retrieved
+
+    node environment [node-name]
+Displays node environment: OS name version and JVM name and version
+
+    node shards [<node-name>]
+Displays indices and shards located on node. If node name is not specified, information is printed for all nodes
+
+    node decomission [<node-name>]
+Disables allocation for given node. If node name is not specified then any cluster-wide allocation restrictions are removed
 
 ### Document commands
 
@@ -68,15 +123,28 @@ All document commands can accept index name as argument to `--index` option. By 
 
 Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
 
-| Command                           | Description                                                                                    |
-|:----------------------------------|:-----------------------------------------------------------------------------------------------|
-| `document list [--index <index-name>]`                   | Lists all documents in index |
-| `document properties [--index <index-name>] --doc <doc-name>`  | Lists properties of `<doc-name>` document. This does not display full metadata, just properies names and types |
-| `document get [--index <index-name>]--doc  <doc-name> <id>`    | Retrieves document by id |
-| `document delete [--index <index-name>] --doc <doc-name> <id>` | Deletes document by id| 
-| `document search [--index <index-name>] [--doc <doc-names>] <query>` | Search for query in `<doc-names>`. Document name can be omitted.|
-| `document query [--index <index-name>] [--doc <doc-name>]`  | Search using Query DSL. Query must be entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}` This will always update "size" parameter to 20|
-| `document put [--index <index-name>] --doc <doc-name> id`      | Upserts document into `index.doc-name` with id == id. This command will start multi-line editor to enter JSON of the document. Complete document with ";". Number of documents returned with this query will be limited to 20. If you need more results use `export` command |
+    document list [--index <index-name>]
+Lists all documents in index
+
+    document properties [--index <index-name>] --doc <doc-name>
+Lists properties of `<doc-name>` document. This does not display full metadata, just properies names and types
+
+    document get [--index <index-name>]--doc  <doc-name> <id>
+Retrieves document by id
+
+    document delete [--index <index-name>] --doc <doc-name> <id>
+Deletes document by id
+
+    document search [--index <index-name>] [--doc <doc-names>] <query>
+Search for query in `<doc-names>`. Document name can be omitted. Number of records returned by query is limited to 20. 
+
+    document query [--index <index-name>] [--doc <doc-name>]
+Search using Query DSL. Query must be entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}` 
+
+Number of records returned by query is limited to 20. If more document is needed use `bulk export` command.
+
+    document put [--index <index-name>] --doc <doc-name> id
+Upserts document into `index.doc-name` with id == id. This command will start multi-line editor to enter JSON of the document. Complete document with ";". Number of documents returned with this query will be limited to 20. If you need more results use `export` command
 
 ### Bulk export/import commands
 
@@ -84,54 +152,11 @@ All bulk commands can accept index name as argument to `--index` option. By usin
 
 Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
 
-| Command                           | Description                                                                                    |
-|:----------------------------------|:-----------------------------------------------------------------------------------------------|
-| `bulk export [--index <index-name>] [--doc <doc-type>] <filename>` | Exports all records from a search into a file. Each line in file will contain JSON with one search result. Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}` |
+    bulk export [--index <index-name>] [--doc <doc-type>] <filename>
+Exports all records from a search into a file. Each line in file will contain JSON with one search result.
 
+Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}`
 
-## Details
-
-### Changing index settings
-
-To change index setting one can use yaml syntax.
-
-Let's take a look at changing  allocation routing for the index.
-
-Using REST APIs it can be done with following request:
-
-        PUT http://localhost:9200/index-name/_settings
-
-        {
-        "settings": {
-                "index": {
-                    "routing": {
-                        "allocation" : {
-                            "require._name": "host1"
-                        }
-                    }
-                }
-            }
-        }
-
-To change the same setting using shelastic there are several syntax options. They are all implemented
-using `index configure` command.
-
-1. Interactive input. When no configuration key is specified on command line then `index configure` command will switch to multiline editor. Enter index configuration line by line, finish with semicolon. Each line of configuration consists of configuration key and value separated by colon
-
-        > index configure index-name
-        Enter configuration parameters, one per line, finish with empty string
-        ... > index.routing.allocation.require._name: "host1"
-        ... > index.routing.allocation.require._ip:  "host2"
-        ... >
-
-
-2. Enter configuration on a command line. Everything after index name will be interpreted as configuration in YAML syntax.
-
-        > index configure index-name index.routing.allocation.require._name (host1)
-
-   _Warning_: May change in future version.
-
-    As commands are interpreted using shell rules, quotes and double quotes will be used to enclose multi-word parameters. Use parenthesis to pass string parameters. Parenthesis will be replaced with quotes in REST call.
 
 
 ## TODO

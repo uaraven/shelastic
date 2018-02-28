@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"shelastic/es"
 	"shelastic/utils"
 	"strings"
@@ -363,27 +362,20 @@ func configureIndex(c *ishell.Context) {
 		}
 
 		var payload map[string]string
-		if len(selector.Args) == 0 {
-			payload = make(map[string]string)
-			cprintln(c, "Enter configuration parameters, one per line finish with ';'")
-			c.SetPrompt(">>> ")
-			lines := strings.Split(c.ReadMultiLines(";"), "\n")
-			for _, ln := range lines {
-				ln = strings.TrimSpace(ln)
-				kv := strings.Split(ln, ":")
-				fmt.Println("pair:", kv)
-				if len(kv) == 2 {
-					payload[strings.TrimSpace(kv[0])] = kv[1]
-				}
+
+		payload = make(map[string]string)
+		cprintlist(c, "Enter configuration parameters, one per line. Finish with ", cy(";"))
+		c.SetPrompt(">>> ")
+		lines := strings.Split(c.ReadMultiLines(";"), "\n")
+		for _, ln := range lines {
+			ln = strings.TrimSpace(ln)
+			kv := strings.Split(ln, ":")
+			if len(kv) == 2 {
+				payload[strings.TrimSpace(kv[0])] = kv[1]
 			}
-			restorePrompt(context, c)
-		} else {
-			v := c.Args[1]
-			if v[0] == '(' && v[len(v)-1] == ')' {
-				v = "\"" + v[1:len(v)-1] + "\""
-			}
-			payload = map[string]string{c.Args[0]: v}
 		}
+		restorePrompt(context, c)
+
 		err = context.IndexConfigure(selector.Index, payload)
 		if err != nil {
 			errorMsg(c, err.Error())
