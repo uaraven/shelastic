@@ -15,17 +15,16 @@ This project is not affiliated with Elastic in any way.
 Connects to ES cluster. If host name is omitted, tries to connect to localhost
 
     disconnect
-    
+
 Disconnects from ES cluster. You need to disconnect before connecting to another cluster
 
     list indices
-    
+
 Lists indices in the cluster
 
     list nodes
-    
-Lists nodes of the cluster. Each node is displayed in format `<name> @ <hostname> [<ip-address>]`
 
+Lists nodes of the cluster. Each node is displayed in format `<name> @ <hostname> [<ip-address>]`
 
     use <index-name>
 
@@ -41,10 +40,11 @@ All index commands can accept index name as argument to `--index` option. By usi
 
 Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
 
-Some of the commands (like `refresh` or `flush`) will be applied to all indices if no index name is specified. If an index is selected with `use` command it 
+Some of the commands (like `refresh` or `flush`) will be applied to all indices if no index name is specified. If an index is selected with `use` command it
 first have to be deselected with `use --` for such commands to be applied to all indices in the cluster.
 
-    index clear-cache [--index <index-name>]   
+    index clear-cache [--index <index-name>]
+
 Clears cache of given index. If no index is in use then cache for all indices is cleared
 
     index flush  [--index <index-name>] [--force] [--wait]
@@ -59,7 +59,7 @@ Forces merging of one or more indices through an API. For ES version 1.x and 2.x
     index view mappings [--index <index-name>] [--doc <doc-name>] [property-name]
 View mappings for index `<index-name>`. Optionally can display mappings only for specified document and/or property. Mappings are printed in YAML format for better readability
 
-    index view settings [--index <index-name>]    
+    index view settings [--index <index-name>]
 View index settings
 
     index view shards [--index <index-name>] [--mode by-node | by-shard]
@@ -77,7 +77,7 @@ Deletes index.
 Deletes all the data in the index, leaving settings, aliases and mappings intact.
 
     index configure [--index <index-name>]
-Sets index setting. 
+Sets index setting.
 
 At prompt enter index configuration line by line. Each line of configuration consists of configuration key and value separated by colon. Semicolon indicates end of entry
 
@@ -86,7 +86,6 @@ At prompt enter index configuration line by line. Each line of configuration con
         >>> index.routing.allocation.require._name: "host1"
         >>> index.routing.allocation.require._ip:  "host2"
         >>>;
-
 
 ### Snapshot commands
 
@@ -144,10 +143,10 @@ Retrieves document by id
 Deletes document by id
 
     document search [--index <index-name>] [--doc <doc-names>] <query>
-Search for query in `<doc-names>`. Document name can be omitted. Number of records returned by query is limited to 20. 
+Search for query in `<doc-names>`. Document name can be omitted. Number of records returned by query is limited to 20.
 
     document query [--index <index-name>] [--doc <doc-name>]
-Search using Query DSL. Query must be entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}` 
+Search using Query DSL. Query must be entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}`
 
 Number of records returned by query is limited to 20. If more document is needed use `bulk export` command.
 
@@ -165,12 +164,11 @@ Exports all records from a search into a file. Each line in file will contain JS
 
 Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}`. If `--source` parameter is specified only `_source` field of records will be exported.
 
-
 ## TODO
 
 1. Refactoring and reorganizing code
     - remove most of map[string]interface{} outside of ES context code
     - unify command help messages
     - consistent input/output
-2. Bulk import/export 
+2. Bulk import/export
 3. Whatever might be useful in ES operations
