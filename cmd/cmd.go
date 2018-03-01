@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"shelastic/es"
+	"strings"
 
 	"github.com/fatih/color"
 	"gopkg.in/abiosoft/ishell.v2"
@@ -28,6 +29,7 @@ var (
 	}
 
 	bl   = color.New(color.FgBlue).SprintfFunc()
+	hbl  = color.New(color.FgHiBlue).SprintfFunc()
 	red  = color.New(color.FgRed).SprintFunc()
 	undr = color.New(color.Underline).SprintfFunc()
 	cy   = color.New(color.FgCyan).SprintfFunc()
@@ -204,10 +206,24 @@ func onConnect(es *es.Es, c *ishell.Context) {
 	c.SetPrompt(health.ClusterName + " $> ")
 }
 
-func restorePrompt(context *es.Es, c *ishell.Context) {
+func restorePrompt(c *ishell.Context) {
 	if context.ActiveIndex != "" {
 		c.SetPrompt(fmt.Sprintf("%s.%s $> ", context.ClusterName, context.ActiveIndex))
 	} else {
 		c.SetPrompt(fmt.Sprintf("%s $> ", context.ClusterName))
 	}
+}
+
+func dangerousPrompt(c *ishell.Context, text string) bool {
+	cprintlist(c, text+" ", hbl("Do you want to proceed (yes/No)?"))
+	c.SetPrompt("> ")
+	defer restorePrompt(c)
+	confirmation := strings.ToLower(c.ReadLine())
+	if confirmation == "yes" {
+		return true
+	}
+	if confirmation != "no" {
+		cprintlist(c, "You need to type ", hbl("yes"), " to confirm")
+	}
+	return false
 }

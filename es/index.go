@@ -2,6 +2,7 @@ package es
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"shelastic/utils"
 	"sort"
@@ -390,6 +391,35 @@ func (e Es) MoveAllShardsToNode(index string, selector string, node string) erro
 
 	err = checkError(resp)
 
+	return err
+}
+
+// TruncateIndex deletes all records in index keeping the index itself intact (with all settings and mappings)
+// It does so by backing up settings and mappings, deleting and recreating index and configuring index as before
+func (e Es) TruncateIndex(indexName string) error {
+	indexName = e.resolveAlias(indexName)
+	indexData, err := e.getJSON("/" + indexName)
+	if err != nil {
+		return err
+	}
+	indexData, ok := indexData[indexName].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Cannot read index settings")
+	}
+	databody, err := json.Marshal(indexData)
+	if err != nil {
+		return err
+	}
+	e.delete("/" + indexName)
+
+	_, err = e.postJSON("/"+indexName, string(databody))
+	return err
+}
+
+// DeleteIndex deletes index completely
+func (e Es) DeleteIndex(indexName string) error {
+	indexName = e.resolveAlias(indexName)
+	_, err := e.delete("/" + indexName)
 	return err
 }
 

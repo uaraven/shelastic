@@ -16,7 +16,7 @@ func UseIndex() *ishell.Cmd {
 			if context == nil {
 				errorMsg(c, errNotConnected)
 			} else {
-				defer restorePrompt(context, c)
+				defer restorePrompt(c)
 				if len(c.Args) < 1 {
 					if context.ActiveIndex != "" {
 						cprintlist(c, "Using index ", cy(context.ActiveIndex))
@@ -217,7 +217,7 @@ func putDocument(c *ishell.Context) {
 	c.SetPrompt(">>> ")
 	json := c.ReadMultiLines(";")
 	json = json[:len(json)-1]
-	restorePrompt(context, c)
+	restorePrompt(c)
 	response, err := context.PutDocument(selector.Index, selector.Document, selector.Args[0], json)
 	if err != nil {
 		errorMsg(c, err.Error())
@@ -294,7 +294,7 @@ func queryDocument(c *ishell.Context) {
 	}
 
 	cprintln(c, "Enter query, ending with ';'")
-	defer restorePrompt(context, c)
+	defer restorePrompt(c)
 	c.SetPrompt(">>> ")
 	q := c.ReadMultiLines(";")
 	if len(q) > 0 {

@@ -78,6 +78,18 @@ func Index() *ishell.Cmd {
 		Func: restrictIndex,
 	})
 
+	index.AddCmd(&ishell.Cmd{
+		Name: "truncate",
+		Help: "Deletes data from index keeping mappings and settings. Usage: truncate [--index] [<index-name>]",
+		Func: truncateIndex,
+	})
+
+	index.AddCmd(&ishell.Cmd{
+		Name: "delete",
+		Help: "Deletes index. Usage: delete [--index] [<index-name>]",
+		Func: deleteIndex,
+	})
+
 	return index
 }
 
@@ -374,7 +386,7 @@ func configureIndex(c *ishell.Context) {
 				payload[strings.TrimSpace(kv[0])] = kv[1]
 			}
 		}
-		restorePrompt(context, c)
+		restorePrompt(c)
 
 		err = context.IndexConfigure(selector.Index, payload)
 		if err != nil {
@@ -423,5 +435,63 @@ func restrictIndex(c *ishell.Context) {
 		} else {
 			cprintln(c, "Ok")
 		}
+	}
+}
+
+func truncateIndex(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	selector, err := parseDocumentArgs(c.Args)
+
+	if selector.Index == "" && len(selector.Args) > 0 {
+		selector.Index = selector.Args[0]
+	}
+	if selector.Index == "" {
+		errorMsg(c, "No index specified")
+		return
+	}
+
+	if !dangerousPrompt(c, "This will delete all data in "+selector.Index+".") {
+		return
+	}
+
+	err = context.TruncateIndex(selector.Index)
+
+	if err != nil {
+		errorMsg(c, err.Error())
+	} else {
+		cprintln(c, "Ok")
+	}
+}
+
+func deleteIndex(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	selector, err := parseDocumentArgs(c.Args)
+
+	if selector.Index == "" && len(selector.Args) > 0 {
+		selector.Index = selector.Args[0]
+	}
+	if selector.Index == "" {
+		errorMsg(c, "No index specified")
+		return
+	}
+
+	if !dangerousPrompt(c, "This will delete all data in "+selector.Index+".") {
+		return
+	}
+
+	err = context.DeleteIndex(selector.Index)
+
+	if err != nil {
+		errorMsg(c, err.Error())
+	} else {
+		context.ActiveIndex = ""
+		cprintln(c, "Ok")
+		restorePrompt(c)
 	}
 }

@@ -68,6 +68,14 @@ View index shards. If `--mode` option is not specified, `by-shard` is used
     index restrict [--index <index-name> selector [<target>]
 Moves all shards to given node by selector. Selector can be one of `name`, `host` or `ip`. If `<target>` is not specified, then restriction is removed
 
+    index delete [--index] [<index-name>]
+
+Deletes index.
+
+    index truncate [--index] [<index-name>]
+
+Deletes all the data in the index, leaving settings, aliases and mappings intact.
+
     index configure [--index <index-name>]
 Sets index setting. 
 

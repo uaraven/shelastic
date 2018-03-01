@@ -47,7 +47,7 @@ func bulkExport(c *ishell.Context) {
 
 	cprintln(c, "Enter query, ending with ';'")
 	c.SetPrompt(">>> ")
-	defer restorePrompt(context, c)
+	defer restorePrompt(c)
 	q := c.ReadMultiLines(";")
 	if len(q) > 0 {
 		q = q[:len(q)-1]
