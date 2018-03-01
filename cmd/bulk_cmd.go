@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"shelastic/es"
 	"shelastic/utils"
@@ -23,7 +24,59 @@ func Bulk() *ishell.Cmd {
 		Func: bulkExport,
 	})
 
+	bulk.AddCmd(&ishell.Cmd{
+		Name: "import",
+		Help: "Imports data from file. Usage: import [--index <index-name>] --doc <doc-type> [--id-field <id-field>] <filename>",
+		Func: bulkImport,
+	})
+
 	return bulk
+}
+
+func bulkImport(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+	type bulkArgs struct {
+		documentSelectorData
+		IDField string `long:"id-field" description:"Name of the field of the object containing the id" value-name:"ID"`
+	}
+
+	slctr, err := parseDocumentArgsCustom(c.Args, &bulkArgs{})
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	selector := slctr.(*bulkArgs)
+
+	if selector.Index == "" {
+		errorMsg(c, "Index not specified")
+		return
+	}
+	if selector.Document == "" {
+		errorMsg(c, "Document not specified")
+		return
+	}
+	if len(selector.Args) == 0 {
+		errorMsg(c, "Data file name is not specified")
+		return
+	}
+	cprintln(c, "Reading and inserting data")
+
+	data, err := ioutil.ReadFile(selector.Args[0])
+	if err != nil {
+		errorMsg(c, "Failed to read from "+selector.Args[0])
+	}
+
+	err = context.BulkImport(selector.Index, selector.Document, selector.IDField, string(data))
+
+	if err != nil {
+		errorMsg(c, "Failed to bulk insert data from "+selector.Args[0])
+	} else {
+		cprintln(c, "Done")
+	}
+
 }
 
 func bulkExport(c *ishell.Context) {
