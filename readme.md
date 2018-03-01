@@ -160,11 +160,10 @@ All bulk commands can accept index name as argument to `--index` option. By usin
 
 Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
 
-    bulk export [--index <index-name>] [--doc <doc-type>] <filename>
+    bulk export [--index <index-name>] [--doc <doc-type>] [--source] <filename>
 Exports all records from a search into a file. Each line in file will contain JSON with one search result.
 
-Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}`
-
+Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}`. If `--source` parameter is specified only `_source` field of records will be exported.
 
 
 ## TODO

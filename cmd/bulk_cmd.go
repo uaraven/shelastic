@@ -19,7 +19,7 @@ func Bulk() *ishell.Cmd {
 
 	bulk.AddCmd(&ishell.Cmd{
 		Name: "export",
-		Help: "Exports data into file. Usage: export [--index <index-name>] [--doc <doc-type>] <filename>",
+		Help: "Exports data into file. Usage: export [--index <index-name>] [--doc <doc-type>] [--source] <filename>",
 		Func: bulkExport,
 	})
 
@@ -31,13 +31,18 @@ func bulkExport(c *ishell.Context) {
 		errorMsg(c, errNotConnected)
 		return
 	}
-	selector, err := parseDocumentArgs(c.Args)
+	type bulkArgs struct {
+		documentSelectorData
+		Source bool `long:"source"  description:"Export only '_source' attribute"`
+	}
+
+	slctr, err := parseDocumentArgsCustom(c.Args, &bulkArgs{})
 
 	if err != nil {
 		errorMsg(c, err.Error())
 		return
 	}
-
+	selector := slctr.(*bulkArgs)
 	if len(selector.Args) == 0 {
 		errorMsg(c, "Not enough parameters. Usage: export <filename>")
 		return
@@ -69,7 +74,7 @@ func bulkExport(c *ishell.Context) {
 	defer close(errChan)
 
 	go context.BulkExport(selector.Index, selector.Document, q, recChan, errChan)
-	go recordWriter(c, fileName, recChan, finChan)
+	go recordWriter(c, fileName, selector.Source, recChan, finChan)
 
 	select {
 	case err = <-errChan:
@@ -85,7 +90,7 @@ func bulkExport(c *ishell.Context) {
 	}
 }
 
-func recordWriter(c *ishell.Context, fileName string, recordSupplier chan *es.BulkRecord, fin chan error) {
+func recordWriter(c *ishell.Context, fileName string, source bool, recordSupplier chan *es.BulkRecord, fin chan error) {
 	f, err := os.Create(fileName)
 	defer f.Close()
 	if err != nil {
@@ -93,7 +98,6 @@ func recordWriter(c *ishell.Context, fileName string, recordSupplier chan *es.Bu
 		return
 	}
 	c.ProgressBar().Start()
-	c.ProgressBar().Final(bl("\nDone\n"))
 
 	defer stopProgress(c)
 
@@ -115,7 +119,19 @@ func recordWriter(c *ishell.Context, fileName string, recordSupplier chan *es.Bu
 				c.ProgressBar().Suffix(fmt.Sprint(" ", rec.Progress, "%"))
 				c.ProgressBar().Progress(rec.Progress)
 
-				jsonString, err := utils.MapToJSON(rec.Content)
+				var body map[string]interface{}
+				if source {
+					var ok bool
+					body, ok = rec.Content["_source"].(map[string]interface{})
+					if !ok {
+						fin <- fmt.Errorf("Search results does not contain '_source' field")
+						break
+					}
+				} else {
+					body = rec.Content
+				}
+
+				jsonString, err := utils.MapToJSON(body)
 				if err != nil {
 					fin <- err
 					break
@@ -129,7 +145,7 @@ func recordWriter(c *ishell.Context, fileName string, recordSupplier chan *es.Bu
 }
 
 func stopProgress(c *ishell.Context) {
-	c.ProgressBar().Suffix("      ")
+	c.ProgressBar().Suffix("  Done\n")
 	c.ProgressBar().Progress(100)
 	c.ProgressBar().Stop()
 }
