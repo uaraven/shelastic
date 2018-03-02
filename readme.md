@@ -168,10 +168,4 @@ Query for search is entered as JSON at the prompt. Empty query (single `;` chara
 
 ## Release history
 
-Latest version of shelastic is 0.3, binaries compiled for `amd64` architecture can be downloaded here:
-
-  - [Linux](bin/linux-amd64/shelastic)
-  - [MacOS](bin/macos-amd64/shelastic)
-
-Not tested
-  - [Windows](bin/win-amd64/shelastic.exe)
+Latest version of shelastic is 0.3, binaries compiled for `amd64` architecture can be downloaded [here](https://github.com/uaraven/shelastic/releases/tag/v0.3). It includes pre-built binaries for Linux, MacOS and Windows. Note that Windows binary is untested. 
