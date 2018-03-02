@@ -1,5 +1,7 @@
 # shelastic
 
+Version 0.3
+
 Shelastic is an interactive shell for Elastic search which provides commands for most common administration tasks and aims to support all ElasticSearch versions from 1.7 to 6.x.
 
 This project started as study in Go language and was not intented as seriuous administration tool. Despite that I found that it is sometimes useful.
@@ -164,11 +166,12 @@ Exports all records from a search into a file. Each line in file will contain JS
 
 Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}`. If `--source` parameter is specified only `_source` field of records will be exported.
 
-## TODO
+## Release history
 
-1. Refactoring and reorganizing code
-    - remove most of map[string]interface{} outside of ES context code
-    - unify command help messages
-    - consistent input/output
-2. Bulk import/export
-3. Whatever might be useful in ES operations
+Latest version of shelastic is 0.3, binaries compiled for `amd64` architecture can be downloaded here:
+
+  - [Linux](bin/linux-amd64/shelastic)
+  - [MacOS](bin/macos-amd64/shelastic)
+
+Not tested
+  - [Windows](bin/win-amd64/shelastic.exe)
