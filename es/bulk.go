@@ -15,7 +15,9 @@ const (
 
 // BulkRecord contains record returned from ES and progress counter in percents
 type BulkRecord struct {
-	id       string
+	ID       string
+	Index    string
+	Document string
 	Content  map[string]interface{}
 	Progress int
 }
@@ -97,8 +99,12 @@ func (e Es) BulkExport(index string, doc string, query string, output chan *Bulk
 
 		for _, record := range records {
 			count++
+			rec := record.(map[string]interface{})
 			res := &BulkRecord{
-				Content:  record.(map[string]interface{}),
+				ID:       rec["_id"].(string),
+				Index:    rec["_index"].(string),
+				Document: rec["_type"].(string),
+				Content:  rec,
 				Progress: (count * 100) / total,
 			}
 

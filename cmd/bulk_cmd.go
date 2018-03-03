@@ -86,7 +86,8 @@ func bulkExport(c *ishell.Context) {
 	}
 	type bulkArgs struct {
 		documentSelectorData
-		Source bool `long:"source"  description:"Export only '_source' attribute"`
+		Format string `long:"format" choice:"ndjson" choice:"array" default:"array" description:"Export file format"`
+		Source bool   `long:"source"  description:"Export only '_source' attribute"`
 	}
 
 	slctr, err := parseDocumentArgsCustom(c.Args, &bulkArgs{})
@@ -127,7 +128,7 @@ func bulkExport(c *ishell.Context) {
 	defer close(errChan)
 
 	go context.BulkExport(selector.Index, selector.Document, q, recChan, errChan)
-	go recordWriter(c, fileName, selector.Source, recChan, finChan)
+	go recordWriter(c, fileName, selector.Source, selector.Format, recChan, finChan)
 
 	select {
 	case err = <-errChan:
@@ -143,7 +144,7 @@ func bulkExport(c *ishell.Context) {
 	}
 }
 
-func recordWriter(c *ishell.Context, fileName string, source bool, recordSupplier chan *es.BulkRecord, fin chan error) {
+func recordWriter(c *ishell.Context, fileName string, source bool, format string, recordSupplier chan *es.BulkRecord, fin chan error) {
 	f, err := os.Create(fileName)
 	defer f.Close()
 	if err != nil {
@@ -154,12 +155,19 @@ func recordWriter(c *ishell.Context, fileName string, source bool, recordSupplie
 
 	defer stopProgress(c)
 
+	if format == "array" {
+		f.WriteString("[\n")
+	}
+
 	for {
 		select {
 		case err, stillWorking := <-fin:
 			if err != nil || !stillWorking {
 				if context.Debug {
 					fmt.Println("Bulk writer: Stopping writer")
+				}
+				if format == "array" {
+					f.WriteString("\n]\n")
 				}
 				return
 			}
@@ -190,7 +198,28 @@ func recordWriter(c *ishell.Context, fileName string, source bool, recordSupplie
 					break
 				}
 				singleJSONString := strings.Replace(jsonString, "\n", "", -1)
-				f.WriteString(singleJSONString + "\n")
+				if format == "ndjson" {
+					meta := make(map[string]interface{})
+					meta["index"] = map[string]interface{}{
+						"_index": rec.Index,
+						"_type":  rec.Document,
+						"_id":    rec.ID,
+					}
+
+					metaStr, err := utils.MapToJSON(meta)
+					if err != nil {
+						fin <- err
+						break
+					}
+					metaStr = strings.Replace(metaStr, "\n", "", -1)
+					f.WriteString(metaStr + "\n")
+				}
+				f.WriteString(singleJSONString)
+				if format == "array" {
+					f.WriteString(",\n")
+				} else {
+					f.WriteString("\n")
+				}
 			}
 		}
 
