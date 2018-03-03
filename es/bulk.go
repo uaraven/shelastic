@@ -15,7 +15,9 @@ const (
 
 // BulkRecord contains record returned from ES and progress counter in percents
 type BulkRecord struct {
-	id       string
+	ID       string
+	Index    string
+	Document string
 	Content  map[string]interface{}
 	Progress int
 }
