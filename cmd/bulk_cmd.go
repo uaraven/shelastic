@@ -11,6 +11,11 @@ import (
 	ishell "gopkg.in/abiosoft/ishell.v2"
 )
 
+const (
+	ndjson = "ndjson"
+	array  = "array"
+)
+
 // Bulk is a parent for bulk-related operations
 func Bulk() *ishell.Cmd {
 	bulk := &ishell.Cmd{
@@ -26,7 +31,7 @@ func Bulk() *ishell.Cmd {
 
 	bulk.AddCmd(&ishell.Cmd{
 		Name: "import",
-		Help: "Imports data from file. Usage: import [--index <index-name>] --doc <doc-type> [--id-field <id-field>] <filename>",
+		Help: "Imports data from file. Usage: import [--ndjson] [--index <index-name>] --doc <doc-type> [--id-field <id-field>] <filename>",
 		Func: bulkImport,
 	})
 
@@ -40,6 +45,7 @@ func bulkImport(c *ishell.Context) {
 	}
 	type bulkArgs struct {
 		documentSelectorData
+		NDJSON  bool   `long:"ndjson" description:"Treat input data as NDJSON format"`
 		IDField string `long:"id-field" description:"Name of the field of the object containing the id" value-name:"ID"`
 	}
 
@@ -50,11 +56,11 @@ func bulkImport(c *ishell.Context) {
 	}
 	selector := slctr.(*bulkArgs)
 
-	if selector.Index == "" {
+	if selector.Index == "" && !selector.NDJSON {
 		errorMsg(c, "Index not specified")
 		return
 	}
-	if selector.Document == "" {
+	if selector.Document == "" && !selector.NDJSON {
 		errorMsg(c, "Document not specified")
 		return
 	}
@@ -69,10 +75,15 @@ func bulkImport(c *ishell.Context) {
 		errorMsg(c, "Failed to read from "+selector.Args[0])
 	}
 
-	err = context.BulkImport(selector.Index, selector.Document, selector.IDField, string(data))
+	if selector.NDJSON {
+		err = context.BulkImportNdJSON(string(data))
+	} else {
+		err = fmt.Errorf("Only NDJSON bulk import is implemented")
+		// err = context.BulkImport(selector.Index, selector.Document, selector.IDField, string(data))
+	}
 
 	if err != nil {
-		errorMsg(c, "Failed to bulk insert data from "+selector.Args[0])
+		errorMsg(c, "Failed to bulk insert data from "+selector.Args[0]+" "+err.Error())
 	} else {
 		cprintln(c, "Done")
 	}
@@ -155,9 +166,10 @@ func recordWriter(c *ishell.Context, fileName string, source bool, format string
 
 	defer stopProgress(c)
 
-	if format == "array" {
+	if format == array {
 		f.WriteString("[\n")
 	}
+	firstLine := true
 
 	for {
 		select {
@@ -166,7 +178,7 @@ func recordWriter(c *ishell.Context, fileName string, source bool, format string
 				if context.Debug {
 					fmt.Println("Bulk writer: Stopping writer")
 				}
-				if format == "array" {
+				if format == array {
 					f.WriteString("\n]\n")
 				}
 				return
@@ -198,7 +210,7 @@ func recordWriter(c *ishell.Context, fileName string, source bool, format string
 					break
 				}
 				singleJSONString := strings.Replace(jsonString, "\n", "", -1)
-				if format == "ndjson" {
+				if format == ndjson {
 					meta := make(map[string]interface{})
 					meta["index"] = map[string]interface{}{
 						"_index": rec.Index,
@@ -213,11 +225,14 @@ func recordWriter(c *ishell.Context, fileName string, source bool, format string
 					}
 					metaStr = strings.Replace(metaStr, "\n", "", -1)
 					f.WriteString(metaStr + "\n")
+				} else {
+					if !firstLine {
+						f.WriteString(",\n")
+					}
+					firstLine = false
 				}
 				f.WriteString(singleJSONString)
-				if format == "array" {
-					f.WriteString(",\n")
-				} else {
+				if format == ndjson {
 					f.WriteString("\n")
 				}
 			}

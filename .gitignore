@@ -1,5 +1,6 @@
 vendor/*
 .vscode/*
 .idea/*
+bin/*
 shelastic
 http

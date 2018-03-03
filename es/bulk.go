@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -175,6 +176,30 @@ func (e Es) BulkImport(indexName string, documentName string, idfld string, data
 	bulkBody := wrtr.String()
 
 	resp, err := e.postJSON("/_bulk", bulkBody)
+
+	if err != nil {
+		return err
+	}
+
+	err = checkError(resp)
+
+	return err
+}
+
+//BulkImportNdJSON reads data from file and executes bulk request
+func (e Es) BulkImportNdJSON(data string) error {
+	scnr := bufio.NewScanner(strings.NewReader(data))
+	wrtr := new(bytes.Buffer)
+
+	for scnr.Scan() {
+		line := scnr.Text()
+		wrtr.WriteString(line + "\n")
+	}
+	wrtr.WriteString("\n")
+
+	bulkBody := wrtr.String()
+
+	resp, err := e.requestWithBody(http.MethodPost, "/_bulk", bulkBody, "application/x-ndjson")
 
 	if err != nil {
 		return err
