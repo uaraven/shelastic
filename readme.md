@@ -1,5 +1,7 @@
 # shelastic
 
+Version 0.3
+
 Shelastic is an interactive shell for Elastic search which provides commands for most common administration tasks and aims to support all ElasticSearch versions from 1.7 to 6.x.
 
 This project started as study in Go language and was not intented as seriuous administration tool. Despite that I found that it is sometimes useful.
@@ -173,11 +175,6 @@ If `--format ndjson` option is specified then file will be treated like Elastics
 If `--ndjson` is not specified then shelastic expects the file to contain json array of recordsIndex and document names should be specified on command line and optional `--idfield <id-field-name>` parameter can be used to pick record id from its `<id-field-name>` field.
 
 
-## TODO
+## Release history
 
-1. Refactoring and reorganizing code
-    - remove most of map[string]interface{} outside of ES context code
-    - unify command help messages
-    - consistent input/output
-2. Bulk import/export
-3. Whatever might be useful in ES operations
+Latest version of shelastic is 0.3, binaries compiled for `amd64` architecture can be downloaded [here](https://github.com/uaraven/shelastic/releases/tag/v0.3). It includes pre-built binaries for Linux, MacOS and Windows. Note that Windows binary is untested. 

@@ -9,7 +9,7 @@ import (
 
 const (
 	// Version of shelastic
-	Version = "0.2"
+	Version = "0.3"
 )
 
 func main() {
