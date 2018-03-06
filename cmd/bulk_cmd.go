@@ -25,13 +25,13 @@ func Bulk() *ishell.Cmd {
 
 	bulk.AddCmd(&ishell.Cmd{
 		Name: "export",
-		Help: "Exports data into file. Usage: export [--index <index-name>] [--doc <doc-type>] [--source] <filename>",
+		Help: "Exports data into file. Usage: export [--index <index-name>] [--doc <doc-type>] [--format ndjson|array] [--source] <filename>",
 		Func: bulkExport,
 	})
 
 	bulk.AddCmd(&ishell.Cmd{
 		Name: "import",
-		Help: "Imports data from file. Usage: import [--ndjson] [--index <index-name>] --doc <doc-type> [--id-field <id-field>] <filename>",
+		Help: "Imports data from file. Usage: import [--format ndjson|array] [--index <index-name>] [--doc <doc-type>] [--id-field <id-field>] <filename>",
 		Func: bulkImport,
 	})
 
@@ -45,7 +45,7 @@ func bulkImport(c *ishell.Context) {
 	}
 	type bulkArgs struct {
 		documentSelectorData
-		NDJSON  bool   `long:"ndjson" description:"Treat input data as NDJSON format"`
+		Format  string `long:"format" choice:"ndjson" choice:"array" default:"array" description:"Import file format"`
 		IDField string `long:"id-field" description:"Name of the field of the object containing the id" value-name:"ID"`
 	}
 
@@ -56,11 +56,11 @@ func bulkImport(c *ishell.Context) {
 	}
 	selector := slctr.(*bulkArgs)
 
-	if selector.Index == "" && !selector.NDJSON {
+	if selector.Index == "" && selector.Format != ndjson {
 		errorMsg(c, "Index not specified")
 		return
 	}
-	if selector.Document == "" && !selector.NDJSON {
+	if selector.Document == "" && selector.Format != ndjson {
 		errorMsg(c, "Document not specified")
 		return
 	}
@@ -75,11 +75,12 @@ func bulkImport(c *ishell.Context) {
 		errorMsg(c, "Failed to read from "+selector.Args[0])
 	}
 
-	if selector.NDJSON {
-		err = context.BulkImportNdJSON(string(data))
+	errFileName := selector.Args[0] + "-es-resp.json"
+
+	if selector.Format == ndjson {
+		err = context.BulkImportNdJSON(string(data), errFileName)
 	} else {
-		err = fmt.Errorf("Only NDJSON bulk import is implemented")
-		// err = context.BulkImport(selector.Index, selector.Document, selector.IDField, string(data))
+		err = context.BulkImport(selector.Index, selector.Document, selector.IDField, string(data), errFileName)
 	}
 
 	if err != nil {

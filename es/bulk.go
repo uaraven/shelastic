@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"shelastic/utils"
 	"strings"
 )
 
@@ -148,29 +150,33 @@ func (e Es) BulkExport(index string, doc string, query string, output chan *Bulk
 }
 
 //BulkImport reads data from file, converts to ES bulk format and executes bulk insert
-func (e Es) BulkImport(indexName string, documentName string, idfld string, data string) error {
-	scnr := bufio.NewScanner(strings.NewReader(data))
+func (e Es) BulkImport(indexName string, documentName string, idfld string, data string, errFile string) error {
 	wrtr := new(bytes.Buffer)
 
-	for scnr.Scan() {
-		line := scnr.Text()
-		recJSON := make(map[string]interface{})
-		err := json.Unmarshal([]byte(line), &recJSON)
-		if err != nil {
-			return err
-		}
+	inputJSON := make([]map[string]interface{}, 0)
+	err := json.Unmarshal([]byte(data), &inputJSON)
+
+	if err != nil {
+		return fmt.Errorf("Cannot parse input JSON array" + err.Error())
+	}
+
+	for _, recJSON := range inputJSON {
 		var idstr string
 		if idfld != "" {
 			id, ok := recJSON[idfld].(string)
 			if !ok {
 				return fmt.Errorf("No field '%s' in record", idfld)
 			}
-			idstr = fmt.Sprintf(", \"_id\": %s", id)
+			idstr = fmt.Sprintf(", \"_id\": \"%s\"", id)
 		} else {
 			idstr = ""
 		}
-		wrtr.WriteString(fmt.Sprintf("{\"index\":{\"_index\" : \"%s\", \"_doc\":\"%s\" %s}}\n", indexName, documentName, idstr))
-		wrtr.WriteString(line)
+		wrtr.WriteString(fmt.Sprintf("{\"index\":{\"_index\" : \"%s\", \"_type\":\"%s\"%s}}\n", indexName, documentName, idstr))
+		lineBytes, err := json.Marshal(recJSON)
+		if err != nil {
+			return err
+		}
+		wrtr.WriteString(string(lineBytes) + "\n")
 	}
 
 	bulkBody := wrtr.String()
@@ -182,12 +188,23 @@ func (e Es) BulkImport(indexName string, documentName string, idfld string, data
 	}
 
 	err = checkError(resp)
+	if err != nil {
+		return err
+	}
 
-	return err
+	haveErrors, ok := resp["errors"].(bool)
+	if haveErrors || !ok {
+		err = writeResponseToFile(resp, errFile)
+		if err != nil {
+			return fmt.Errorf("There were errors during the export. Failed to write ES response to " + errFile + ". " + err.Error())
+		}
+		return fmt.Errorf("There were errors during the export. ES response is saved to " + errFile)
+	}
+	return nil
 }
 
 //BulkImportNdJSON reads data from file and executes bulk request
-func (e Es) BulkImportNdJSON(data string) error {
+func (e Es) BulkImportNdJSON(data string, errFile string) error {
 	scnr := bufio.NewScanner(strings.NewReader(data))
 	wrtr := new(bytes.Buffer)
 
@@ -205,7 +222,26 @@ func (e Es) BulkImportNdJSON(data string) error {
 		return err
 	}
 
-	err = checkError(resp)
+	haveErrors, ok := resp["errors"].(bool)
+	if haveErrors || !ok {
+		err = writeResponseToFile(resp, errFile)
+		if err != nil {
+			return fmt.Errorf("There were errors during the export. Failed to write ES response to " + errFile + ". " + err.Error())
+		}
+		return fmt.Errorf("There were errors during the export. ES response is saved to " + errFile)
+	}
 
-	return err
+	return nil
+}
+
+func writeResponseToFile(resp map[string]interface{}, errorFileName string) error {
+	jsons, err := utils.MapToJSON(resp)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(errorFileName, []byte(jsons), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -77,9 +77,14 @@ func (e Es) ListProperties(index string, doc string) ([]DocumentProperty, error)
 	result := make([]DocumentProperty, len(body))
 	i := 0
 	for field := range body {
+		fldType := body[field].(map[string]interface{})
+		types, ok := fldType["type"].(string)
+		if !ok {
+			types = "<complex>"
+		}
 		v := DocumentProperty{
 			Name: field,
-			Type: body[field].(map[string]interface{})["type"].(string),
+			Type: types,
 		}
 		result[i] = v
 		i++
