@@ -161,10 +161,19 @@ All bulk commands can accept index name as argument to `--index` option. By usin
 
 Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
 
-    bulk export [--index <index-name>] [--doc <doc-type>] [--source] <filename>
+    bulk export [--index <index-name>] [--doc <doc-type>] [--format ndjson|array] [--source] <filename>
 Exports all records from a search into a file. Each line in file will contain JSON with one search result.
 
 Query for search is entered as JSON at the prompt. Empty query (single `;` character) will be interpreted as `{"query":{"match_all":{}}}`. If `--source` parameter is specified only `_source` field of records will be exported.
+If `--format ndjson` option is specified then data will be written in Elasticsearch NDJSON format, with action and metadata (see [ES bulk API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html) for details If `--format array` is used, then file will contain JSON array with all the records. If `--format` option is omitted then `array` format is assumed by default.
+
+    bulk import [--format ndjson|array]|[--index <index-name>] [--doc <doc-type>] [--id-field field] <filename>
+Imports records from the file into Elasticsearch. Import supports two file formats, just like export.
+
+If `--format ndjson` option is specified then file will be treated like Elasticsearch NDJSON file, with action and metadata (see [ES bulk API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html) for details). `--index` and `--doc` options are ignored when used with `--format array`. If `--format` option is omitted then `array` format is assumed by default.
+
+If `--ndjson` is not specified then shelastic expects the file to contain json array of recordsIndex and document names should be specified on command line and optional `--idfield <id-field-name>` parameter can be used to pick record id from its `<id-field-name>` field.
+
 
 ## Release history
 

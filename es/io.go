@@ -61,7 +61,7 @@ func (e Es) post(path string, data string) (*http.Response, error) {
 	return resp, err
 }
 
-func (e Es) requestWithBody(method string, path string, data string) (map[string]interface{}, error) {
+func (e Es) requestWithBody(method string, path string, data string, contentType string) (map[string]interface{}, error) {
 	pathURL, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,11 @@ func (e Es) requestWithBody(method string, path string, data string) (map[string
 	}
 	cl := strconv.FormatInt(int64(len(data)), 10)
 	req.Header.Add("Content-Length", cl)
-	req.Header.Add("Content-Type", "application/json")
+	if contentType == "" {
+		req.Header.Add("Content-Type", "application/json")
+	} else {
+		req.Header.Add("Content-Type", contentType)
+	}
 
 	if e.Debug {
 		dumpRequest(req, data)
@@ -104,15 +108,15 @@ func (e Es) requestWithBody(method string, path string, data string) (map[string
 }
 
 func (e Es) putJSON(path string, data string) (map[string]interface{}, error) {
-	return e.requestWithBody(http.MethodPut, path, data)
+	return e.requestWithBody(http.MethodPut, path, data, "")
 }
 
 func (e Es) postJSON(path string, data string) (map[string]interface{}, error) {
-	return e.requestWithBody(http.MethodPost, path, data)
+	return e.requestWithBody(http.MethodPost, path, data, "")
 }
 
 func (e Es) getJSONWithBody(path string, data string) (map[string]interface{}, error) {
-	return e.requestWithBody(http.MethodGet, path, data)
+	return e.requestWithBody(http.MethodGet, path, data, "")
 }
 
 func (e Es) getData(path string) ([]byte, error) {

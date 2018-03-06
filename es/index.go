@@ -351,17 +351,7 @@ func (e Es) IndexConfigure(indexName string, params map[string]string) error {
 
 //ResolveAndValidateIndex checks if indexName parameter is a valid index and in case it is an alias it resolves it to actual index name
 func (e Es) ResolveAndValidateIndex(indexName string) (string, error) {
-	if len(e.aliases) == 0 {
-		indices, err := e.ListIndices()
-		if err != nil {
-			return "", err
-		}
-		for _, idx := range indices {
-			if idx.Name == indexName {
-				return indexName, nil
-			}
-		}
-	} else {
+	if len(e.aliases) != 0 {
 		if idx, ok := e.aliases[indexName]; ok {
 			return idx, nil
 		}
@@ -371,6 +361,17 @@ func (e Es) ResolveAndValidateIndex(indexName string) (string, error) {
 			}
 		}
 	}
+
+	indices, err := e.ListIndices()
+	if err != nil {
+		return "", err
+	}
+	for _, idx := range indices {
+		if idx.Name == indexName {
+			return indexName, nil
+		}
+	}
+
 	return "", fmt.Errorf("Unknown index: %s", indexName)
 }
 

@@ -1,6 +1,6 @@
 vendor/*
 .vscode/*
 .idea/*
-/shelastic
-bin/
+bin/*
+shelastic
 http
