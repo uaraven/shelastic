@@ -534,5 +534,10 @@ func aliasOperation(c *ishell.Context, aliasFunc func(string, string) error) {
 		errorMsg(c, "No alias name specified")
 		return
 	}
-	aliasFunc(selector.Index, selector.Args[0])
+	err = aliasFunc(selector.Index, selector.Args[0])
+	if err != nil {
+		errorMsg(c, err.Error())
+	} else {
+		cprintln(c, "Ok")
+	}
 }
