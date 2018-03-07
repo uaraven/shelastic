@@ -424,6 +424,38 @@ func (e Es) DeleteIndex(indexName string) error {
 	return err
 }
 
+// AddIndexAlias adds alias to index
+func (e Es) AddIndexAlias(indexName string, alias string) error {
+	return e.aliasOperation("add", indexName, alias)
+}
+
+// DeleteIndexAlias deletes alias from index
+func (e Es) DeleteIndexAlias(indexName string, alias string) error {
+	return e.aliasOperation("remove", indexName, alias)
+}
+
+func (e Es) aliasOperation(operation string, indexName string, alias string) error {
+	url := fmt.Sprintf("/%s/_alias/%s", indexName, alias)
+	var resp map[string]interface{}
+	var err error
+	if operation == "add" {
+		resp, err = e.putJSON(url, "")
+	} else if operation == "remove" {
+		resp, err = e.delete(url)
+	}
+	if err != nil {
+		return err
+	}
+	err = checkError(resp)
+	if err == nil {
+		aliases, err := e.buildAliasCache()
+		if err == nil {
+			e.aliases = aliases
+		}
+	}
+	return err
+}
+
 func (sii ShortIndexInfo) String() string {
 	return fmt.Sprintf("%s [docs: %d, bytes: %d, aliases:%v]", sii.Name, sii.DocumentCount, sii.Size, sii.Aliases)
 }
