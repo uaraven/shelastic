@@ -216,6 +216,10 @@ func putDocument(c *ishell.Context) {
 	cprintln(c, "Enter document body, ending with ';':")
 	c.SetPrompt(">>> ")
 	json := c.ReadMultiLines(";")
+	if len(json) < 0 {
+		cprintln(c, "Cancelled")
+		return
+	}
 	json = json[:len(json)-1]
 	restorePrompt(c)
 	response, err := context.PutDocument(selector.Index, selector.Document, selector.Args[0], json)

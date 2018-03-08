@@ -388,10 +388,15 @@ func configureIndex(c *ishell.Context) {
 		var payload map[string]string
 
 		payload = make(map[string]string)
-		cprintlist(c, "Enter configuration parameters, one per line. Finish with ", cy(";"))
+		cprintlist(c, "Enter configuration parameters, one per line. Finish with ", cyb(";"))
 		c.SetPrompt(">>> ")
+		defer restorePrompt(c)
 		settings := c.ReadMultiLines(";")
 		lastSemicolon := strings.LastIndex(settings, ";")
+		if len(settings) == 0 || lastSemicolon < 0 {
+			cprintln(c, "Cancelled")
+			return
+		}
 		settings = settings[:lastSemicolon]
 		lines := strings.Split(settings, "\n")
 		for _, ln := range lines {
@@ -401,7 +406,6 @@ func configureIndex(c *ishell.Context) {
 				payload[strings.TrimSpace(kv[0])] = kv[1]
 			}
 		}
-		restorePrompt(c)
 
 		err = context.IndexConfigure(selector.Index, payload)
 		if err != nil {
