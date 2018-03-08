@@ -90,6 +90,18 @@ func Index() *ishell.Cmd {
 		Func: deleteIndex,
 	})
 
+	index.AddCmd(&ishell.Cmd{
+		Name: "add-alias",
+		Help: "Adds an alias for an index. Usage: add-alias [--index <index-name>] alias-name",
+		Func: addAlias,
+	})
+
+	index.AddCmd(&ishell.Cmd{
+		Name: "delete-alias",
+		Help: "Delets an alias from an index. Usage: delete-alias [--index <index-name>] alias-name",
+		Func: deleteAlias,
+	})
+
 	return index
 }
 
@@ -493,5 +505,39 @@ func deleteIndex(c *ishell.Context) {
 		context.ActiveIndex = ""
 		cprintln(c, "Ok")
 		restorePrompt(c)
+	}
+}
+
+func addAlias(c *ishell.Context) {
+	aliasOperation(c, context.AddIndexAlias)
+}
+
+func deleteAlias(c *ishell.Context) {
+	aliasOperation(c, context.DeleteIndexAlias)
+}
+
+func aliasOperation(c *ishell.Context, aliasFunc func(string, string) error) {
+	if context == nil {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	selector, err := parseDocumentArgs(c.Args)
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	if selector.Index == "" {
+		errorMsg(c, "No index specified")
+		return
+	}
+	if len(selector.Args) == 0 {
+		errorMsg(c, "No alias name specified")
+		return
+	}
+	err = aliasFunc(selector.Index, selector.Args[0])
+	if err != nil {
+		errorMsg(c, err.Error())
+	} else {
+		cprintln(c, "Ok")
 	}
 }

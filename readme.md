@@ -89,6 +89,13 @@ At prompt enter index configuration line by line. Each line of configuration con
         >>> index.routing.allocation.require._ip:  "host2"
         >>>;
 
+
+    index add-alias [--index <index-name>] <alias-name>
+Creates a new alias `<alias-name>` for index `<index-name>`
+
+    index delete-alias [--index <index-name>] <alias-name>
+Delete alias `<alias-name`> from index `<index-name>`
+
 ### Snapshot commands
 
     snapshot repo list
