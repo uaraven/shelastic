@@ -112,7 +112,14 @@ func List() *ishell.Cmd {
 					errorMsg(c, "Failed to retrieve list of indices: %s", err.Error())
 				}
 				for _, index := range result {
-					cprintln(c, index.String())
+					var aliases = make([]string, len(index.Aliases))
+					for i, alias := range index.Aliases {
+						aliases[i] = alias.Name
+					}
+					aliasesstr := strings.Join(aliases, ", ")
+					cprintlist(c, cyb(index.Name),
+						fmt.Sprintf(" [docs: %d, bytes: %d, aliases: %s]", index.DocumentCount, index.Size, hbl(aliasesstr)))
+
 				}
 			} else {
 				errorMsg(c, errNotConnected)
