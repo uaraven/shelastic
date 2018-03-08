@@ -136,8 +136,8 @@ func List() *ishell.Cmd {
 				if err != nil {
 					errorMsg(c, "Failed to retrieve list of nodes: %s", err.Error())
 				} else {
-					for _, index := range result {
-						cprintln(c, index.String())
+					for _, node := range result {
+						cprintlist(c, cyb(node.Name), " @ ", hbl(node.Host), " ["+node.IP+"]")
 					}
 				}
 			} else {
