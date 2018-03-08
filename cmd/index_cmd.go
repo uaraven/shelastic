@@ -390,7 +390,10 @@ func configureIndex(c *ishell.Context) {
 		payload = make(map[string]string)
 		cprintlist(c, "Enter configuration parameters, one per line. Finish with ", cy(";"))
 		c.SetPrompt(">>> ")
-		lines := strings.Split(c.ReadMultiLines(";"), "\n")
+		settings := c.ReadMultiLines(";")
+		lastSemicolon := strings.LastIndex(settings, ";")
+		settings = settings[:lastSemicolon]
+		lines := strings.Split(settings, "\n")
 		for _, ln := range lines {
 			ln = strings.TrimSpace(ln)
 			kv := strings.Split(ln, ":")

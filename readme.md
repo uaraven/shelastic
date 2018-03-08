@@ -42,11 +42,16 @@ All index commands can accept index name as argument to `--index` option. By usi
 
 Even when an index is in use, explicit index name may be supplied to any document command. Index specified with `--index` option will take precedence.
 
-Some of the commands (like `refresh` or `flush`) will be applied to all indices if no index name is specified. If an index is selected with `use` command it
-first have to be deselected with `use --` for such commands to be applied to all indices in the cluster.
+Some of the commands (like `refresh` or `flush`) will be applied to all indices if no index name is specified. If an index is selected with `use` command it first have to be deselected with `use --` for such commands to be applied to all indices in the cluster.
+
+For some commands you can use wildcards in index name, for example following command will set replica count to 0 for all indices:
+
+        es-cluster $> index configure --index *
+        Enter configuration parameters, one per line. Finish with ;
+        >>> number_of_replicas: 0;
+        Ok
 
     index clear-cache [--index <index-name>]
-
 Clears cache of given index. If no index is in use then cache for all indices is cleared
 
     index flush  [--index <index-name>] [--force] [--wait]

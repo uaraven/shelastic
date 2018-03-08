@@ -73,7 +73,7 @@ func Connect() *ishell.Cmd {
 			var ping *es.PingResponse
 			context, ping, err = es.Connect(host)
 			if err == nil {
-				cprintln(c, "Connected to %s (version %s)", ping.ClusterName, ping.Version)
+				cprintlist(c, "Connected to ", cyb(ping.ClusterName), " (version ", ping.Version, ")")
 				onConnect(context, c)
 			} else {
 				errorMsg(c, fmt.Sprintf("Failed to connect to %s: %s", host, err.Error()))
