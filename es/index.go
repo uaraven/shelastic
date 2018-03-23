@@ -434,6 +434,26 @@ func (e Es) DeleteIndexAlias(indexName string, alias string) error {
 	return e.aliasOperation("remove", indexName, alias)
 }
 
+// OpenIndex opens previously closed index
+func (e Es) OpenIndex(indexName string) error {
+	response, err := e.postJSON(fmt.Sprintf("/%s/_open", indexName), "")
+	if err != nil {
+		return err
+	}
+	err = checkError(response)
+	return err
+}
+
+// CloseIndex closes previously open index
+func (e Es) CloseIndex(indexName string) error {
+	response, err := e.postJSON(fmt.Sprintf("/%s/_close", indexName), "")
+	if err != nil {
+		return err
+	}
+	err = checkError(response)
+	return err
+}
+
 func (e Es) aliasOperation(operation string, indexName string, alias string) error {
 	url := fmt.Sprintf("/%s/_alias/%s", indexName, alias)
 	var resp map[string]interface{}
@@ -469,16 +489,24 @@ func (sai ShortAliasInfo) String() string {
 	return buffer.String()
 }
 
+func getErrorReason(errorBody interface{}) string {
+	body, ok := errorBody.(map[string]interface{})
+	var reason string
+	if !ok {
+		reason = errorBody.(string)
+	} else {
+		reason = body["reason"].(string)
+		if causeBody, ok := body["caused_by"]; ok {
+			cause := getErrorReason(causeBody)
+			return fmt.Sprintf("%s, caused by '%s'", reason, cause)
+		}
+	}
+	return reason
+}
+
 func checkError(body map[string]interface{}) error {
 	if doc, ok := body["error"]; ok {
-		body, ok := doc.(map[string]interface{})
-		var reason string
-		if !ok {
-			reason = doc.(string)
-		} else {
-			reason = body["reason"].(string)
-		}
-		return fmt.Errorf(reason)
+		return fmt.Errorf(getErrorReason(doc))
 	}
 	return nil
 }
