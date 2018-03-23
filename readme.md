@@ -22,7 +22,7 @@ Disconnects from ES cluster. You need to disconnect before connecting to another
 
     list indices
 
-Lists indices in the cluster
+Lists indices in the cluster. Displays number of documents in index, size of index in bytes and index aliases
 
     list nodes
 
@@ -100,6 +100,12 @@ Creates a new alias `<alias-name>` for index `<index-name>`
 
     index delete-alias [--index <index-name>] <alias-name>
 Delete alias `<alias-name`> from index `<index-name>`
+
+    index close [--index <index-name>]
+Closes index. Closed index is not available for read or write
+
+    index open [-- index <index-name>]
+Opens previously closed index. 
 
 ### Snapshot commands
 
