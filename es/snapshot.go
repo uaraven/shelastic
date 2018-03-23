@@ -35,7 +35,11 @@ func (e Es) RegisterRepository(repo string, sType string, settings map[string]st
 		return err
 	}
 
-	_, err = e.putJSON(url, data)
+	resp, err := e.putJSON(url, data)
+	if err != nil {
+		return err
+	}
+	err = checkError(resp)
 	return err
 }
 
@@ -87,10 +91,20 @@ func (e Es) DeleteSnapshot(repo string, snapshotName string) error {
 
 // RestoreSnapshot restores a snapshot with a given name from a repository
 func (e Es) RestoreSnapshot(repo string, snapshotName string) error {
+	indices, err := e.ListIndices()
+	if err != nil {
+		return err
+	}
+
+	for _, index := range indices {
+		e.CloseIndex(index.Name)
+	}
+
 	url := fmt.Sprintf("/_snapshot/%s/%s/_restore", repo, snapshotName)
 	resp, err := e.postJSON(url, "")
 	if err != nil {
 		return err
 	}
+
 	return checkError(resp)
 }

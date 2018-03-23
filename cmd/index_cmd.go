@@ -102,7 +102,55 @@ func Index() *ishell.Cmd {
 		Func: deleteAlias,
 	})
 
+	index.AddCmd(&ishell.Cmd{
+		Name: "open",
+		Help: "Opens previously closed index. Usage: open [--index <index-name>]",
+		Func: openIndex,
+	})
+
+	index.AddCmd(&ishell.Cmd{
+		Name: "close",
+		Help: "Closes previously open index. Usage: close [--index <index-name>]",
+		Func: openIndex,
+	})
+
 	return index
+}
+
+func singleIndexOp(c *ishell.Context, op func(string) error) {
+	if context != nil {
+		selector, err := parseDocumentArgs(c.Args)
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		var indexName string
+		if selector.Index == "" {
+			if len(selector.Args) == 0 {
+				errorMsg(c, "Please specify index name")
+				return
+			}
+			indexName = selector.Args[0]
+		} else {
+			indexName = selector.Index
+		}
+		err = op(indexName)
+		if err != nil {
+			errorMsg(c, err.Error())
+		} else {
+			cprintln(c, "Ok")
+		}
+	} else {
+		errorMsg(c, errNotConnected)
+	}
+}
+
+func openIndex(c *ishell.Context) {
+	singleIndexOp(c, context.OpenIndex)
+}
+
+func closeIndex(c *ishell.Context) {
+	singleIndexOp(c, context.CloseIndex)
 }
 
 func flush(c *ishell.Context) {
