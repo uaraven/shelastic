@@ -114,6 +114,12 @@ func Index() *ishell.Cmd {
 		Func: openIndex,
 	})
 
+	index.AddCmd(&ishell.Cmd{
+		Name: "copy",
+		Help: "Copies mappings and documents from one index to another. Settings and aliases are not copied. Usage: copy [--index <index-name>] --target <target-index>",
+		Func: copyIndex,
+	})
+
 	return index
 }
 
@@ -471,7 +477,7 @@ const restrictUsage = "Usage: restrict [--index <index-name>] name|ip|host <targ
 
 func restrictIndex(c *ishell.Context) {
 	if context == nil {
-		errorMsg(c, errIndexNotSelected)
+		errorMsg(c, errNotConnected)
 		return
 	}
 	selector, err := parseDocumentArgs(c.Args)
@@ -507,7 +513,7 @@ func restrictIndex(c *ishell.Context) {
 
 func truncateIndex(c *ishell.Context) {
 	if context == nil {
-		errorMsg(c, errIndexNotSelected)
+		errorMsg(c, errNotConnected)
 		return
 	}
 	selector, err := parseDocumentArgs(c.Args)
@@ -535,7 +541,7 @@ func truncateIndex(c *ishell.Context) {
 
 func deleteIndex(c *ishell.Context) {
 	if context == nil {
-		errorMsg(c, errIndexNotSelected)
+		errorMsg(c, errNotConnected)
 		return
 	}
 	selector, err := parseDocumentArgs(c.Args)
@@ -573,7 +579,7 @@ func deleteAlias(c *ishell.Context) {
 
 func aliasOperation(c *ishell.Context, aliasFunc func(string, string) error) {
 	if context == nil {
-		errorMsg(c, errIndexNotSelected)
+		errorMsg(c, errNotConnected)
 		return
 	}
 	selector, err := parseDocumentArgs(c.Args)
@@ -594,5 +600,31 @@ func aliasOperation(c *ishell.Context, aliasFunc func(string, string) error) {
 		errorMsg(c, err.Error())
 	} else {
 		cprintln(c, "Ok")
+	}
+}
+
+func copyIndex(c *ishell.Context) {
+	if context == nil {
+		errorMsg(c, errNotConnected)
+		return
+	}
+	type reindexArgs struct {
+		documentSelectorData
+		Target string `long:"target" description:"Target index name" required:"true"`
+	}
+
+	slct, err := parseDocumentArgsCustom(c.Args, &reindexArgs{})
+	if err != nil {
+		errorMsg(c, err.Error())
+		return
+	}
+	selector := slct.(*reindexArgs)
+	if selector.Index == "" {
+		errorMsg(c, errIndexNotSelected)
+		return
+	}
+	err = context.CopyIndex(selector.Index, selector.Target)
+	if err != nil {
+		errorMsg(c, err.Error())
 	}
 }

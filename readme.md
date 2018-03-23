@@ -104,8 +104,13 @@ Delete alias `<alias-name`> from index `<index-name>`
     index close [--index <index-name>]
 Closes index. Closed index is not available for read or write
 
-    index open [-- index <index-name>]
+    index open [--index <index-name>]
 Opens previously closed index. 
+
+    index copy [--index <index-name>] --target <target-index-name>
+Copies mappings and documents from `<index-name>` to `<target-index-name>`. Target index should not exist. No index settings or
+aliases are copied. For ES version 2.4 and above this will use `_reindex` API. For older Elasticsearch versions all the documents will
+be copied using bulk APIs. There is no progress indication, so be patient. 
 
 ### Snapshot commands
 
