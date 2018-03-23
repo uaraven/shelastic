@@ -117,8 +117,9 @@ func List() *ishell.Cmd {
 						aliases[i] = alias.Name
 					}
 					aliasesstr := strings.Join(aliases, ", ")
-					cprintlist(c, cyb(index.Name),
-						fmt.Sprintf(" [docs: %d, bytes: %d, aliases: %s]", index.DocumentCount, index.Size, hbl(aliasesstr)))
+					cprintlist(c, cyb(index.Name), " [",
+						fmt.Sprintf("docs: %d, bytes: %d, aliases: %s", index.DocumentCount, index.Size, hbl(aliasesstr)),
+						"]")
 
 				}
 			} else {
