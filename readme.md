@@ -200,4 +200,16 @@ If `--ndjson` is not specified then shelastic expects the file to contain json a
 
 ## Release history
 
+### 0.3.1
+
+Changelog:
+  - Bulk import and export
+  - Index data copying
+  - Index alias control
+  - Bugfixes
+  
+  Binaries can be downloaded [here](https://github.com/uaraven/shelastic/releases/tag/v0.3.1).
+
+### 0.3
+
 Latest version of shelastic is 0.3, binaries compiled for `amd64` architecture can be downloaded [here](https://github.com/uaraven/shelastic/releases/tag/v0.3). It includes pre-built binaries for Linux, MacOS and Windows. Note that Windows binary is untested. 
