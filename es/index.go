@@ -417,6 +417,114 @@ func (e Es) TruncateIndex(indexName string) error {
 	return err
 }
 
+//CopyIndex creates a new index named 'newName' and copies data from 'indexName' to it
+//On ES 5.0+ this uses reindex API, on older versions this copies data using bulk APIs
+//Mappings and settings are copied from original index
+func (e Es) CopyIndex(indexName string, newName string) error {
+	indexName = e.resolveAlias(indexName)
+
+	// Create new index with the same settings as the old one, but without aliases
+
+	// retrieve index settings
+	body, err := e.getJSON(fmt.Sprintf("/%s", indexName))
+	if err != nil {
+		return err
+	}
+	err = checkError(body)
+	if err != nil {
+		return err
+	}
+
+	// Create settings for new index
+	indexSettingsJSON := body[indexName].(map[string]interface{})
+	indexSettingsJSON["aliases"] = make(map[string]interface{})
+	indexSettingsJSON["settings"] = make(map[string]interface{})
+
+	indexSettingsStr, err := json.Marshal(indexSettingsJSON)
+	if err != nil {
+		return err
+	}
+
+	// Create new index
+	response, err := e.putJSON(newName, string(indexSettingsStr))
+	if err != nil {
+		return err
+	}
+	err = checkError(response)
+	if err != nil {
+		return err
+	}
+
+	if e.Version[0] < 2 && e.Version[1] < 3 {
+		return e.copyData(indexName, newName)
+	}
+	return e.reindex(indexName, newName)
+}
+
+func (e Es) reindex(oldIndex string, newIndex string) error {
+	body := fmt.Sprintf("{\"source\":{\"index\":\"%s\"}, \"dest\":{\"index\":\"%s\"}}", oldIndex, newIndex)
+	resp, err := e.postJSON("_reindex?wait_for_completion=true", body)
+	if err != nil {
+		return err
+	}
+	err = checkError(resp)
+	return err
+}
+
+func (e Es) copyData(oldIndex string, newIndex string) error {
+	docs, err := e.ListDocuments(oldIndex)
+	if err != nil {
+		return err
+	}
+	for _, doc := range docs {
+		var recordsIn = make(chan *BulkRecord, 1)
+		var recordsOut = make(chan *BulkRecord, 1)
+		var controlIn = make(chan error)
+		var controlOut = make(chan error)
+
+		go e.BulkExport(oldIndex, doc, "{\"query\": {\"match_all\":{}}}", recordsIn, controlIn)
+		go e.bulkSink(newIndex, doc, recordsOut, controlOut)
+
+		done := false
+
+		for !done {
+			select {
+			case record, recOk := <-recordsIn:
+				if recOk {
+					recordsOut <- record
+				} else {
+					done = true
+				}
+			case err = <-controlIn:
+				controlOut <- err
+				if e.Debug {
+					fmt.Printf("Received from control In: %v\n", err)
+				}
+			case err = <-controlOut:
+				if e.Debug {
+					fmt.Printf("Received from control Out: %v\n", err)
+				}
+				done = true
+			}
+
+		}
+
+		if e.Debug {
+			fmt.Println("Closing channels")
+		}
+		close(recordsIn)
+		close(recordsOut)
+		close(controlIn)
+		close(controlOut)
+	}
+
+	if e.Debug {
+		fmt.Printf("Returning: %v\n", err)
+	}
+
+	return err
+}
+
 // DeleteIndex deletes index completely
 func (e Es) DeleteIndex(indexName string) error {
 	indexName = e.resolveAlias(indexName)

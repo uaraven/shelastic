@@ -191,6 +191,19 @@ func cprintlist(c *ishell.Context, params ...interface{}) {
 	c.Println()
 }
 
+// cprintl prints list of parameters on a line. If parameter is a function it is printed as is, otherwise it is wrapped in default color
+// No new line after all is printed
+func cprintl(c *ishell.Context, params ...interface{}) {
+	for _, item := range params {
+		if reflect.TypeOf(item).Kind() == reflect.Func {
+			c.Print(item)
+		} else {
+			c.Print(bl("%v", item))
+		}
+	}
+	c.Print(" ")
+}
+
 func errorMsg(c *ishell.Context, message string, params ...interface{}) {
 	c.Println(red(fmt.Sprintf(message, params...)))
 }

@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	scrollLength = "2m"
-	size         = 20
+	scrollLength     = "2m"
+	size             = 20
+	bulkBufferLength = 100
 )
 
 // BulkRecord contains record returned from ES and progress counter in percents
@@ -29,6 +30,9 @@ type BulkRecord struct {
 func (e Es) BulkExport(index string, doc string, query string, output chan *BulkRecord, ctlChan chan error) {
 	if index != "" {
 		index = "/" + index
+	}
+	if doc != "" {
+		doc = "/" + doc
 	}
 	var body map[string]interface{}
 
@@ -171,7 +175,8 @@ func (e Es) BulkImport(indexName string, documentName string, idfld string, data
 		} else {
 			idstr = ""
 		}
-		wrtr.WriteString(fmt.Sprintf("{\"index\":{\"_index\" : \"%s\", \"_type\":\"%s\"%s}}\n", indexName, documentName, idstr))
+		wrtr.WriteString(fmt.Sprintf("{\"index\":{\"_index\" : \"%s\", \"_type\":\"%s\", \"_id\":\"%s\"}}\n",
+			indexName, documentName, idstr))
 		lineBytes, err := json.Marshal(recJSON)
 		if err != nil {
 			return err
@@ -224,7 +229,6 @@ func (e Es) BulkImportNdJSON(data string, errFile string) error {
 
 	haveErrors, ok := resp["errors"].(bool)
 	if haveErrors || !ok {
-		err = writeResponseToFile(resp, errFile)
 		if err != nil {
 			return fmt.Errorf("There were errors during the export. Failed to write ES response to " + errFile + ". " + err.Error())
 		}
@@ -232,6 +236,99 @@ func (e Es) BulkImportNdJSON(data string, errFile string) error {
 	}
 
 	return nil
+}
+
+// bulkInsert writes buffer of records to ES index
+func (e Es) bulkInsert(indexName string, documentName string, buffer []*BulkRecord) error {
+	wrtr := new(bytes.Buffer)
+
+	for _, rec := range buffer {
+		wrtr.WriteString(fmt.Sprintf("{\"index\":{\"_index\" : \"%s\", \"_type\":\"%s\", \"_id\":\"%s\"}}\n", indexName, documentName, rec.ID))
+		source := rec.Content["_source"]
+		lineBytes, err := json.Marshal(source)
+
+		if err != nil {
+			return err
+		}
+		wrtr.WriteString(string(lineBytes) + "\n")
+	}
+
+	bulkBody := wrtr.String()
+
+	resp, err := e.postJSON("/_bulk", bulkBody)
+
+	if err != nil {
+		return err
+	}
+
+	err = checkError(resp)
+	if err != nil {
+		return err
+	}
+
+	haveErrors, ok := resp["errors"].(bool)
+	if haveErrors || !ok {
+		if err != nil {
+			return fmt.Errorf("There were errors during the copying: " + err.Error())
+		}
+		return fmt.Errorf("There were errors during the copying")
+	}
+	return nil
+}
+
+func (e Es) bulkSink(indexName string, documentName string, input chan *BulkRecord, ctlChan chan error) {
+	var recordBuffer []*BulkRecord
+
+	for {
+		select {
+		case record, isOk := <-input:
+			{
+				if e.Debug {
+					fmt.Println("Bulk sink: Received record")
+				}
+
+				if !isOk {
+					if e.Debug {
+						fmt.Println("Bulk sink: Input channel closed")
+					}
+					ctlChan <- nil
+					return
+				}
+				recordBuffer = append(recordBuffer, record)
+				if len(recordBuffer) > bulkBufferLength {
+					err := e.bulkInsert(indexName, documentName, recordBuffer)
+					if err != nil {
+						if e.Debug {
+							fmt.Println("Got error from bulk insert")
+						}
+						ctlChan <- err
+						return
+					}
+				}
+			}
+		case err, _ := <-ctlChan:
+			if err == nil {
+				if e.Debug {
+					fmt.Println("Sink: graceful close, inserting records from buffer")
+				}
+				if len(recordBuffer) > 0 {
+					err := e.bulkInsert(indexName, documentName, recordBuffer)
+					if err != nil {
+						if e.Debug {
+							fmt.Printf("Sink: Failed to insert last records %v", err)
+						}
+						ctlChan <- err
+						return
+					}
+				}
+			}
+			ctlChan <- nil
+			if e.Debug {
+				fmt.Println("Sink: Got message on control channel: closing")
+			}
+			return
+		}
+	}
 }
 
 func writeResponseToFile(resp map[string]interface{}, errorFileName string) error {
