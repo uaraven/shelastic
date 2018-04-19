@@ -37,7 +37,7 @@ func Nodes() *ishell.Cmd {
 
 	nodes.AddCmd(&ishell.Cmd{
 		Name: "decomission",
-		Help: "Decomission node(s)",
+		Help: "Decomission node(s). Usage: decomission [--selector node|ip|host  --clear|list-to-decomission]",
 		Func: decomissionNodes,
 	})
 
@@ -179,8 +179,8 @@ func buildNodeIndexInfo(node string, indices []*es.ShortIndexInfo) (map[string][
 				if is.Node.Name == node {
 					shard := shard{
 						ID:      sh.ID,
-						Primary: is.Primary,
-						State:   is.State,
+						Primary: is.Routing.Primary,
+						State:   is.Routing.State,
 					}
 					nodeShards = append(nodeShards, shard)
 				}
@@ -199,18 +199,84 @@ func decomissionNodes(c *ishell.Context) {
 		return
 	}
 
-	if len(c.Args) < 1 {
-		cprintln(c, "No node specified, removing any allocation restrictions")
+	type decomissionArgs struct {
+		documentSelectorData
+		Mode  string `long:"selector" description:"Selector" choice:"node" choice:"ip" choice:"host" default:""`
+		Clear bool   `long:"clear" description:"Removes routing allocation for a given selector"`
 	}
 
-	nodes := strings.Join(c.Args, ",")
-
-	err := context.DecomissionNode(nodes)
+	slct, err := parseDocumentArgsCustom(c.Args, &decomissionArgs{})
 	if err != nil {
-		errorMsg(c, "Failed to modify cluster allocation: "+err.Error())
-	} else {
-		cprintln(c, "Ok")
+		errorMsg(c, err.Error())
+		return
 	}
+	selector := slct.(*decomissionArgs)
+
+	if len(selector.Mode) < 1 {
+		settings, err := context.GetSettings()
+		if err != nil {
+			errorMsg(c, err.Error())
+			return
+		}
+		cprintlist(c, "Existing transient routing allocations:")
+
+		transient, ok := settings["transient"].(map[string]interface{})
+		if !ok {
+			cprintln(c, "None")
+			return
+		}
+		cluster, ok := transient["cluster"].(map[string]interface{})
+		if !ok {
+			cprintln(c, "None")
+			return
+		}
+		routing, ok := cluster["routing"].(map[string]interface{})
+		if !ok {
+			cprintln(c, "None")
+			return
+		}
+		allocation, ok := routing["allocation"].(map[string]interface{})
+		if !ok {
+			cprintln(c, "None")
+			return
+		}
+		excludes, ok := allocation["exclude"].(map[string]interface{})
+		if !ok {
+			cprintln(c, "None")
+		} else {
+			for key, value := range excludes {
+				cprintlist(c, key, ": ", hbl(value.(string)))
+			}
+		}
+	} else {
+		var nodes string
+		if selector.Clear {
+			nodes = ""
+		} else {
+			nodes = strings.Join(selector.Args, ",")
+			if len(nodes) == 0 {
+				errorMsg(c, "Please specify allocation rules")
+				return
+			}
+		}
+
+		err = context.DecomissionNode(selector.Mode, nodes)
+		if err != nil {
+			errorMsg(c, "Failed to modify cluster allocation: "+err.Error())
+		} else {
+			cprintln(c, "Ok")
+		}
+	}
+}
+
+func filterSettings(settings map[string]interface{}, prefix string) []string {
+	result := make([]string, 0)
+	for key := range settings {
+		if strings.HasPrefix(key, prefix) {
+			result = append(result, settings[key].(string))
+		}
+	}
+	return result
 }
 
 // -- presentation functions ---

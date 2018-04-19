@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"shelastic/cmd"
 
 	flags "github.com/jessevdk/go-flags"
@@ -9,7 +10,7 @@ import (
 
 const (
 	// Version of shelastic
-	Version = "0.3"
+	Version = "0.3.1"
 )
 
 func main() {
@@ -29,6 +30,10 @@ func main() {
 	settings := &cmd.Settings{}
 
 	_, err := flags.Parse(settings)
+
+	if runtime.GOOS == "windows" {
+		settings.NoColor = true
+	}
 
 	if err == nil {
 		cmd.Initialize(settings)

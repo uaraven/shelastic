@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"shelastic/utils"
-	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -31,23 +29,6 @@ type IndexSettings map[string]interface{}
 
 // IndexMappings contains index mappings
 type IndexMappings map[string]interface{}
-
-// ShardInfo contains information about the shard
-type ShardInfo struct {
-	State            string
-	Primary          bool
-	Node             *ShortNodeInfo
-	CommitedSegments int
-	SearchSegments   int
-}
-
-// IndexShard is information about index shard.
-// ID is number of shard
-// Shards contains information on actual shards allocated to nodes
-type IndexShard struct {
-	ID     int
-	Shards []*ShardInfo
-}
 
 // ListIndices returns slice of *ShortIndexInfo containing names of indices
 func (e Es) ListIndices() ([]*ShortIndexInfo, error) {
@@ -130,71 +111,6 @@ func getAnyKey(m map[string]interface{}) string {
 	return ""
 }
 
-// IndexViewMapping returns string containing JSON of mapping information
-func (e Es) IndexViewMapping(indexName string, documentType string, propertyName string) (*IndexMappings, error) {
-	body, err := e.getJSON(fmt.Sprintf("/%s/_mapping", indexName))
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = checkError(body)
-	if err != nil {
-		return nil, fmt.Errorf("Index %s failed: %s", indexName, err.Error())
-	}
-
-	indexName = e.resolveAlias(indexName)
-
-	body = body[indexName].(map[string]interface{})
-
-	if doc, ok := body["mappings"]; ok {
-		body = doc.(map[string]interface{})
-	}
-
-	if documentType != "" {
-		if doc, ok := body[documentType]; ok {
-			body = doc.(map[string]interface{})["properties"].(map[string]interface{})
-		} else {
-			return nil, fmt.Errorf("No '%s' document in mapping", documentType)
-		}
-	}
-	if propertyName != "" {
-		if doc, ok := body[propertyName]; ok {
-			body = doc.(map[string]interface{})
-		} else {
-			return nil, fmt.Errorf("No '%s' property in document '%s'", propertyName, documentType)
-		}
-	}
-	mappings := &IndexMappings{}
-	err = utils.DictToAny(body, mappings)
-	if err != nil {
-		return nil, err
-	}
-	return mappings, nil
-}
-
-// IndexViewSettings retrieves index settings
-func (e Es) IndexViewSettings(indexName string) (*IndexSettings, error) {
-	body, err := e.getJSON(fmt.Sprintf("/%s/_settings", indexName))
-
-	if err != nil {
-		return nil, err
-	}
-
-	// return settings, nil
-	err = checkError(body)
-	if err != nil {
-		return nil, fmt.Errorf("Index %s failed: %s", indexName, err.Error())
-	}
-
-	indexName = e.resolveAlias(indexName)
-
-	settings := &IndexSettings{}
-	err = utils.DictToAny(body[indexName].(map[string]interface{})["settings"].(map[string]interface{})["index"].(map[string]interface{}), settings)
-
-	return settings, nil
-}
-
 // Flush flushes ES index
 func (e Es) Flush(indexName string, force bool, wait bool) error {
 	var path string
@@ -248,79 +164,6 @@ func (e Es) ForceMerge(indexName string) error {
 	}
 	_, err := e.post(path, "")
 	return err
-}
-
-// IndexShards is just a slice of IndexShard
-type IndexShards []IndexShard
-
-//IndexShards returns list of shards allocated for a given index
-func (e Es) IndexShards(indexName string) (IndexShards, error) {
-	body, err := e.getJSON(fmt.Sprintf("/%s/_segments", indexName))
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = checkError(body)
-	if err != nil {
-		return nil, fmt.Errorf("Index %s failed: %s", indexName, err.Error())
-	}
-
-	indexName = e.resolveAlias(indexName)
-
-	shards := body["indices"].(map[string]interface{})[indexName].(map[string]interface{})["shards"].(map[string]interface{})
-
-	var result []IndexShard
-	for shardIdx := range shards {
-		shard := shards[shardIdx].([]interface{})
-		var shardInfos = make([]*ShardInfo, len(shard))
-		for idx, subShardM := range shard {
-			subShard := subShardM.(map[string]interface{})
-			routing := subShard["routing"].(map[string]interface{})
-
-			state := routing["state"].(string)
-			primary := routing["primary"].(bool)
-			nodeID := routing["node"].(string)
-
-			node, ok := e.Nodes[nodeID]
-			if !ok {
-				return nil, fmt.Errorf("Failed to parse response: Unknown node %s", node)
-			}
-
-			commitedSegments := int(subShard["num_committed_segments"].(float64))
-			searchSegments := int(subShard["num_search_segments"].(float64))
-
-			shardInfo := &ShardInfo{
-				State:            state,
-				Primary:          primary,
-				Node:             node,
-				CommitedSegments: commitedSegments,
-				SearchSegments:   searchSegments,
-			}
-			shardInfos[idx] = shardInfo
-		}
-		id, _ := strconv.Atoi(shardIdx)
-		indexShard := IndexShard{
-			ID:     id,
-			Shards: shardInfos,
-		}
-		result = append(result, indexShard)
-	}
-	res := IndexShards(result)
-	sort.Sort(res)
-	return res, nil
-}
-
-func (is IndexShards) Len() int {
-	return len(is)
-}
-
-func (is IndexShards) Less(i, j int) bool {
-	return is[i].ID < is[j].ID
-}
-
-func (is IndexShards) Swap(i, j int) {
-	is[i], is[j] = is[j], is[i]
 }
 
 // IndexConfigure updates configuration for a given index.

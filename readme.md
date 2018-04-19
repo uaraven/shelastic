@@ -146,8 +146,9 @@ Displays node environment: OS name version and JVM name and version
     node shards [<node-name>]
 Displays indices and shards located on node. If node name is not specified, information is printed for all nodes
 
-    node decomission [<node-name>]
-Disables allocation for given node. If node name is not specified then any cluster-wide allocation restrictions are removed
+    node decomission [--selector ip|host|node --clear|<list-of-selectors>]
+Disables allocation for given node. Nodes can be disabled by ip address, host name or node name. Multiple nodes can be disabled by listing selectors separated with space. If `--clear` parameter is provided instead of list of selectors, then restrictions will be removed for selector chosen by `--selector`. If all parameters are omitted, then current restrictions will be printed. This command modifies cluster _transient_ settings, so its effects will last till cluster restart.
+
 
 ### Document commands
 

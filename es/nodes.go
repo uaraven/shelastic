@@ -153,13 +153,14 @@ func (e Es) GetNodeEnvironmentInfo(nodeNames []string) (*NodesEnvironmentInfo, e
 }
 
 // DecomissionNode excludes given nodes from shard allocation, allowing to shut down such nodes without loosing data
-func (e Es) DecomissionNode(node string) error {
+func (e Es) DecomissionNode(selector string, node string) error {
 	if node != "" {
 		node = "\"" + node + "\""
 	} else {
 		node = "null"
 	}
-	postBody := fmt.Sprintf("{\"transient\":{\"cluster.routing.allocation.exclude._name\" : %s }}", node)
+
+	postBody := fmt.Sprintf("{\"transient\":{\"cluster.routing.allocation.exclude._%s\" : %s }}", selector, node)
 
 	resp, err := e.putJSON("/_cluster/settings", postBody)
 

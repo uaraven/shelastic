@@ -82,3 +82,13 @@ func DictToAny(inp map[string]interface{}, receiver interface{}) error {
 	}
 	return yaml.Unmarshal([]byte(data), receiver)
 }
+
+// DictToAnyJ converts map[string]interface{} to any other interface
+// This is naive implemenation which uses JSON as a convertation medium
+func DictToAnyJ(inp map[string]interface{}, receiver interface{}) error {
+	data, err := MapToJSON(inp)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(data), receiver)
+}
