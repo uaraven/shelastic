@@ -85,6 +85,9 @@ func (e Es) requestWithBody(method string, path string, data string, contentType
 	}
 
 	resp, err = e.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if e.Debug {

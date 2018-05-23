@@ -15,6 +15,7 @@ const (
 	scrollLength     = "2m"
 	size             = 20
 	bulkBufferLength = 100
+	maxRequestLength = 512 * 1024
 )
 
 // BulkRecord contains record returned from ES and progress counter in percents
@@ -164,6 +165,7 @@ func (e Es) BulkImport(indexName string, documentName string, idfld string, data
 		return fmt.Errorf("Cannot parse input JSON array" + err.Error())
 	}
 
+	count := 0
 	for _, recJSON := range inputJSON {
 		var idstr string
 		if idfld != "" {
@@ -182,28 +184,24 @@ func (e Es) BulkImport(indexName string, documentName string, idfld string, data
 			return err
 		}
 		wrtr.WriteString(string(lineBytes) + "\n")
+		count += len(lineBytes)
+
+		if count > maxRequestLength {
+			bulkBody := wrtr.String()
+
+			err := e.sendBulkBody(bulkBody, errFile)
+			if err != nil {
+				return err
+			}
+			wrtr = new(bytes.Buffer)
+			count = 0
+		}
 	}
 
 	bulkBody := wrtr.String()
-
-	resp, err := e.postJSON("/_bulk", bulkBody)
-
-	if err != nil {
+	if len(bulkBody) > 0 {
+		err = e.sendBulkBody(bulkBody, errFile)
 		return err
-	}
-
-	err = checkError(resp)
-	if err != nil {
-		return err
-	}
-
-	haveErrors, ok := resp["errors"].(bool)
-	if haveErrors || !ok {
-		err = writeResponseToFile(resp, errFile)
-		if err != nil {
-			return fmt.Errorf("There were errors during the export. Failed to write ES response to " + errFile + ". " + err.Error())
-		}
-		return fmt.Errorf("There were errors during the export. ES response is saved to " + errFile)
 	}
 	return nil
 }
@@ -213,15 +211,38 @@ func (e Es) BulkImportNdJSON(data string, errFile string) error {
 	scnr := bufio.NewScanner(strings.NewReader(data))
 	wrtr := new(bytes.Buffer)
 
+	count := 0
+	lines := 0
 	for scnr.Scan() {
 		line := scnr.Text()
 		wrtr.WriteString(line + "\n")
-	}
-	wrtr.WriteString("\n")
+		count += len(line)
+		lines++
+		if count > maxRequestLength && lines%2 == 0 {
+			bulkBody := wrtr.String()
 
+			err := e.sendBulkBody(bulkBody, errFile)
+			if err != nil {
+				return err
+			}
+			wrtr = new(bytes.Buffer)
+			count = 0
+			lines = 0
+		}
+	}
 	bulkBody := wrtr.String()
 
-	resp, err := e.requestWithBody(http.MethodPost, "/_bulk", bulkBody, "application/x-ndjson")
+	if len(bulkBody) > 0 {
+		err := e.sendBulkBody(bulkBody, errFile)
+		return err
+	}
+	return nil
+
+}
+
+func (e Es) sendBulkBody(body string, errFile string) error {
+
+	resp, err := e.requestWithBody(http.MethodPost, "/_bulk", body, "application/x-ndjson")
 
 	if err != nil {
 		return err
@@ -229,6 +250,10 @@ func (e Es) BulkImportNdJSON(data string, errFile string) error {
 
 	haveErrors, ok := resp["errors"].(bool)
 	if haveErrors || !ok {
+		jerr := writeResponseToFile(resp, errFile)
+		if jerr != nil {
+			return fmt.Errorf("There were errors during export. Failed to parse ES response: " + jerr.Error())
+		}
 		if err != nil {
 			return fmt.Errorf("There were errors during the export. Failed to write ES response to " + errFile + ". " + err.Error())
 		}

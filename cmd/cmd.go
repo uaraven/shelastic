@@ -237,7 +237,7 @@ func restorePrompt(c *ishell.Context) {
 
 func dangerousPrompt(c *ishell.Context, text string) bool {
 	cprintlist(c, text+" ", hbl("Do you want to proceed (yes/No)?"))
-	c.SetPrompt("> ")
+	c.SetPrompt("? ")
 	defer restorePrompt(c)
 	confirmation := strings.ToLower(c.ReadLine())
 	if confirmation == "yes" {
