@@ -1,5 +1,7 @@
 # shelastic
 
+**This project is abandoned!**
+
 Version 0.3
 
 Shelastic is an interactive shell for Elastic search which provides commands for most common administration tasks and aims to support all ElasticSearch versions from 1.7 to 6.x.
